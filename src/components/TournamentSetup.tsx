@@ -115,7 +115,7 @@ const TournamentSetup: React.FC<TournamentSetupProps> = ({
             <option value="dual-confirm">Dual Confirmation - Both players must confirm each result</option>
             <option value="open-access">Open Access - Anyone can enter/edit any score</option>
           </select>
-        </div></div>
+        </div>
       </div>
       
       <button className="btn" onClick={handleGoToPlayerSetup}>Setup Players →</button>
