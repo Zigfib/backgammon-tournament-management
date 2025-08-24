@@ -33,11 +33,35 @@ const Header: React.FC<HeaderProps> = ({ tournament, setTournament, setAppState 
     });
   };
 
+  const handleNewTournament = () => {
+    if (tournament.players.length > 0) {
+      const confirmed = window.confirm('Are you sure you want to start a new tournament? This will clear all current data.');
+      if (!confirmed) return;
+    }
+    
+    // Reset to initial tournament state
+    setTournament({
+      name: 'Championship 2025',
+      players: [],
+      numRounds: 2,
+      maxPoints: 11,
+      matches: [],
+      results: {},
+      rankingSystem: 'standard',
+      scoreEntryMode: 'player-entry',
+      isAdmin: false
+    });
+    
+    // Go back to setup
+    setAppState('setup');
+  };
+
   return (
     <div className="header">
       <h1>🎲 Backgammon Tournament Manager</h1>
       <p>Round-robin tournament with ELO ratings</p>
       <div style={{ marginTop: '12px', display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
+        <button className="btn" onClick={handleNewTournament}>🆕 New Tournament</button>
         <button className="btn" onClick={handleSave}>💾 Save Tournament</button>
         <button className="btn" onClick={handleLoad}>📂 Load Tournament</button>
         <button className="btn" onClick={handleExport}>⬇️ Export JSON</button>
