@@ -18,8 +18,8 @@ const TournamentSetup: React.FC<TournamentSetupProps> = ({
   };
 
   const handleGoToPlayerSetup = () => {
-    const numPlayers = tournament.players.length || 6;
-    if (numPlayers < 3 || numPlayers > 32) {
+    const numPlayers = tournament.players.length;
+    if (!numPlayers || numPlayers < 3 || numPlayers > 32) {
       alert('Please enter a valid number of players (3-32)');
       return;
     }
@@ -45,23 +45,28 @@ const TournamentSetup: React.FC<TournamentSetupProps> = ({
           <input 
             type="number" 
             id="numPlayers" 
-            value={tournament.players.length || 6} 
+            value={tournament.players.length || ''} 
             min="3" 
             max="32"
+            placeholder="Enter number of players"
             onChange={(e) => {
               const count = parseInt(e.target.value);
-              const newPlayers = Array.from({ length: count }, (_, i) => ({
-                id: i,
-                name: `Player ${i + 1}`,
-                startingElo: 1500,
-                currentElo: 1500,
-                email: '',
-                phone: '',
-                matches: 0,
-                points: 0,
-                goalDiff: 0
-              }));
-              setTournament(prev => ({ ...prev, players: newPlayers }));
+              if (!isNaN(count) && count > 0) {
+                const newPlayers = Array.from({ length: count }, (_, i) => ({
+                  id: i,
+                  name: `Player ${i + 1}`,
+                  startingElo: 1500,
+                  currentElo: 1500,
+                  email: '',
+                  phone: '',
+                  matches: 0,
+                  points: 0,
+                  goalDiff: 0
+                }));
+                setTournament(prev => ({ ...prev, players: newPlayers }));
+              } else if (e.target.value === '') {
+                setTournament(prev => ({ ...prev, players: [] }));
+              }
             }}
           />
         </div>
@@ -103,19 +108,7 @@ const TournamentSetup: React.FC<TournamentSetupProps> = ({
           </select>
         </div>
         
-        <div className="input-group">
-          <label htmlFor="scoreEntryMode">Score Entry Permissions</label>
-          <select 
-            id="scoreEntryMode" 
-            value={tournament.scoreEntryMode}
-            onChange={(e) => handleInputChange('scoreEntryMode', e.target.value as 'admin-only' | 'player-entry' | 'dual-confirm' | 'open-access')}
-          >
-            <option value="admin-only">Admin Only - Tournament director enters all scores</option>
-            <option value="player-entry">Player Entry - Players enter scores, admin can override</option>
-            <option value="dual-confirm">Dual Confirmation - Both players must confirm each result</option>
-            <option value="open-access">Open Access - Anyone can enter/edit any score</option>
-          </select>
-        </div>
+        
       </div>
       
       <button className="btn" onClick={handleGoToPlayerSetup}>Setup Players →</button>
