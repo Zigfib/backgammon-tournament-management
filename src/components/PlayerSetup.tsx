@@ -1,7 +1,5 @@
-
 import React from 'react';
 import { Tournament } from '../types';
-import { generateMatches } from '../utils/tournament';
 
 interface PlayerSetupProps {
   tournament: Tournament;
@@ -10,17 +8,17 @@ interface PlayerSetupProps {
   onStartTournament: () => void;
 }
 
-const PlayerSetup: React.FC<PlayerSetupProps> = ({ 
-  tournament, 
-  setTournament, 
-  onBack, 
-  onStartTournament 
+const PlayerSetup: React.FC<PlayerSetupProps> = ({
+  tournament,
+  setTournament,
+  onBack,
+  onStartTournament
 }) => {
   const handlePlayerChange = (index: number, field: string, value: string) => {
     setTournament(prev => ({
       ...prev,
-      players: prev.players.map((player, i) => 
-        i === index 
+      players: prev.players.map((player, i) =>
+        i === index
           ? { ...player, [field]: field === 'startingElo' ? parseInt(value) || 1500 : value }
           : player
       )
@@ -47,9 +45,10 @@ const PlayerSetup: React.FC<PlayerSetupProps> = ({
         ...player,
         currentElo: player.startingElo
       }));
-      
-      const matches = generateMatches(updatedPlayers, prev.numRounds);
-      
+
+      const tournamentWithPlayers = { ...prev, players: updatedPlayers };
+      const matches = tournamentWithPlayers.matches || [];
+
       // Initialize results tracking
       const results: Record<number, Record<number, any[]>> = {};
       updatedPlayers.forEach(p1 => {
@@ -68,7 +67,7 @@ const PlayerSetup: React.FC<PlayerSetupProps> = ({
         results
       };
     });
-    
+
     onStartTournament();
   };
 
@@ -80,51 +79,51 @@ const PlayerSetup: React.FC<PlayerSetupProps> = ({
           ← Back to Tournament Setup
         </button>
       </div>
-      
+
       <div className="player-cards">
         {tournament.players.map((player, index) => (
           <div key={index} className="player-card">
             <h3>Player {index + 1}</h3>
-            
+
             <div className="input-group">
               <label>Full Name *</label>
-              <input 
-                type="text" 
-                value={player.name} 
+              <input
+                type="text"
+                value={player.name}
                 onChange={(e) => handlePlayerChange(index, 'name', e.target.value)}
-                required 
+                required
               />
             </div>
-            
+
             <div className="input-group">
               <label>Starting ELO Rating *</label>
               <div className="elo-input">
-                <input 
-                  type="number" 
-                  value={player.startingElo} 
-                  min="100" 
+                <input
+                  type="number"
+                  value={player.startingElo}
+                  min="100"
                   max="3000"
                   onChange={(e) => handlePlayerChange(index, 'startingElo', e.target.value)}
-                  required 
+                  required
                 />
                 <div className="elo-help" title="Typical range: 1000-2500. New players: ~1200-1500">?</div>
               </div>
             </div>
-            
+
             <div className="input-group">
               <label>Email Address</label>
-              <input 
-                type="email" 
+              <input
+                type="email"
                 value={player.email}
                 placeholder={`player${index + 1}@email.com`}
                 onChange={(e) => handlePlayerChange(index, 'email', e.target.value)}
               />
             </div>
-            
+
             <div className="input-group">
               <label>Phone Number</label>
-              <input 
-                type="tel" 
+              <input
+                type="tel"
                 value={player.phone}
                 placeholder="+1 (555) 123-4567"
                 onChange={(e) => handlePlayerChange(index, 'phone', e.target.value)}
@@ -133,7 +132,7 @@ const PlayerSetup: React.FC<PlayerSetupProps> = ({
           </div>
         ))}
       </div>
-      
+
       <div style={{ marginTop: '20px', textAlign: 'center' }}>
         <button className="btn btn-success" onClick={handleStartTournament}>
           Start Tournament

@@ -1,4 +1,3 @@
-
 import { Player, Match, Tournament, MatchResult, EloCalculation } from '../types';
 
 export const generateMatches = (players: Player[], numRounds: number): Match[] => {
@@ -46,6 +45,34 @@ export const calculateELO = (winnerELO: number, loserELO: number, winnerScore: n
     newLoserELO: newLoserELO,
     winnerChange: newWinnerELO - winnerELO,
     loserChange: newLoserELO - loserELO
+  };
+};
+
+export const generateMatches = (tournament: Tournament): Tournament => {
+  const matches: Match[] = [];
+  const players = tournament.players;
+  let matchId = 0;
+
+  // Generate round-robin matches
+  for (let round = 1; round <= tournament.numRounds; round++) {
+    for (let i = 0; i < players.length; i++) {
+      for (let j = i + 1; j < players.length; j++) {
+        matches.push({
+          id: matchId++,
+          player1: i,
+          player2: j,
+          round: round,
+          player1Score: null,
+          player2Score: null,
+          completed: false
+        });
+      }
+    }
+  }
+
+  return {
+    ...tournament,
+    matches
   };
 };
 
