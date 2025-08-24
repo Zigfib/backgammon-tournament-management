@@ -18,8 +18,8 @@ const TournamentSetup: React.FC<TournamentSetupProps> = ({
   };
 
   const handleGoToPlayerSetup = () => {
-    const numPlayers = tournament.players.length || 6;
-    if (numPlayers < 3 || numPlayers > 32) {
+    const numPlayers = tournament.players.length;
+    if (!numPlayers || numPlayers < 3 || numPlayers > 32) {
       alert('Please enter a valid number of players (3-32)');
       return;
     }
@@ -45,23 +45,28 @@ const TournamentSetup: React.FC<TournamentSetupProps> = ({
           <input 
             type="number" 
             id="numPlayers" 
-            value={tournament.players.length || 6} 
+            value={tournament.players.length || ''} 
             min="3" 
             max="32"
+            placeholder="Enter number of players"
             onChange={(e) => {
               const count = parseInt(e.target.value);
-              const newPlayers = Array.from({ length: count }, (_, i) => ({
-                id: i,
-                name: `Player ${i + 1}`,
-                startingElo: 1500,
-                currentElo: 1500,
-                email: '',
-                phone: '',
-                matches: 0,
-                points: 0,
-                goalDiff: 0
-              }));
-              setTournament(prev => ({ ...prev, players: newPlayers }));
+              if (!isNaN(count) && count > 0) {
+                const newPlayers = Array.from({ length: count }, (_, i) => ({
+                  id: i,
+                  name: `Player ${i + 1}`,
+                  startingElo: 1500,
+                  currentElo: 1500,
+                  email: '',
+                  phone: '',
+                  matches: 0,
+                  points: 0,
+                  goalDiff: 0
+                }));
+                setTournament(prev => ({ ...prev, players: newPlayers }));
+              } else if (e.target.value === '') {
+                setTournament(prev => ({ ...prev, players: [] }));
+              }
             }}
           />
         </div>
@@ -102,6 +107,8 @@ const TournamentSetup: React.FC<TournamentSetupProps> = ({
             <option value="hybrid">Hybrid - Top by points, lower by ELO improvement</option>
           </select>
         </div>
+        
+        
       </div>
       
       <button className="btn" onClick={handleGoToPlayerSetup}>Setup Players →</button>
