@@ -102,20 +102,6 @@ const TournamentSetup: React.FC<TournamentSetupProps> = ({
             <option value="hybrid">Hybrid - Top by points, lower by ELO improvement</option>
           </select>
         </div>
-        
-        <div className="input-group">
-          <label htmlFor="scoreEntryMode">Score Entry Permissions</label>
-          <select 
-            id="scoreEntryMode" 
-            value={tournament.scoreEntryMode}
-            onChange={(e) => handleInputChange('scoreEntryMode', e.target.value as Tournament['scoreEntryMode'])}
-          >
-            <option value="admin-only">Admin Only - Tournament director enters all scores</option>
-            <option value="player-entry">Player Entry - Players enter scores, admin can override</option>
-            <option value="dual-confirm">Dual Confirmation - Both players must confirm each result</option>
-            <option value="open-access">Open Access - Anyone can enter/edit any score</option>
-          </select>
-        </div>
       </div>
       
       <button className="btn" onClick={handleGoToPlayerSetup}>Setup Players →</button>
