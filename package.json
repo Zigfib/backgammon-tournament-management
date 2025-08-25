@@ -2,7 +2,21 @@
 {
   "name": "backgammon-tournament-manager",
   "version": "1.0.0",
-  "private": true,
+  "private": false,
+  "description": "A comprehensive web application for managing round-robin backgammon tournaments with ELO ratings",
+  "keywords": ["backgammon", "tournament", "elo", "react", "typescript", "round-robin"],
+  "author": "Your Name",
+  "license": "MIT",
+  "homepage": "https://github.com/yourusername/backgammon-tournament-manager",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/backgammon-tournament-manager.git"
+  },
+  "main": "build/static/js/main.js",
+  "files": [
+    "build/**/*",
+    "README.md"
+  ],
   "dependencies": {
     "@types/node": "^18.0.0",
     "@types/react": "^18.2.0",
@@ -11,11 +25,16 @@
     "react-dom": "^18.2.0",
     "typescript": "^4.9.0"
   },
+  "bin": {
+    "backgammon-tournament": "./bin/backgammon-tournament.js"
+  },
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "prepublishOnly": "npm run build",
+    "serve": "npx serve -s build -l 3000"
   },
   "devDependencies": {
     "react-scripts": "5.0.1"
