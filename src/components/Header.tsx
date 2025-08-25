@@ -1,8 +1,7 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Tournament } from '../types';
 import { saveTournament, loadTournament, exportTournament, importTournament } from '../utils/storage';
-import ReadmeModal from './ReadmeModal';
 
 interface HeaderProps {
   tournament: Tournament;
@@ -11,7 +10,6 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ tournament, setTournament, setAppState }) => {
-  const [showReadme, setShowReadme] = useState(false);
 
   const handleSave = () => {
     saveTournament(tournament);
@@ -77,9 +75,7 @@ const Header: React.FC<HeaderProps> = ({ tournament, setTournament, setAppState 
             onChange={(e) => e.target.files?.[0] && handleImport(e.target.files[0])}
           />
         </label>
-        <button className="btn" onClick={() => setShowReadme(true)}>📖 User Guide</button>
-      </div>
-      <ReadmeModal isOpen={showReadme} onClose={() => setShowReadme(false)} />
+        </div>
     </div>
   );
 };
