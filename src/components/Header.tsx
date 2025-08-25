@@ -41,7 +41,7 @@ const Header: React.FC<HeaderProps> = ({ tournament, setTournament, setAppState 
     
     // Reset to initial tournament state
     setTournament({
-      name: 'Championship 2025',
+      name: '',
       players: [],
       numRounds: 2,
       maxPoints: 11,
