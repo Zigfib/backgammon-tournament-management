@@ -1,29 +1,5 @@
 import { Player, Match, Tournament, MatchResult, EloCalculation } from '../types';
 
-export const generateMatches = (players: Player[], numRounds: number): Match[] => {
-  const matches: Match[] = [];
-  let matchId = 0;
-  
-  // Generate all player vs player combinations
-  for (let i = 0; i < players.length; i++) {
-    for (let j = i + 1; j < players.length; j++) {
-      for (let round = 1; round <= numRounds; round++) {
-        matches.push({
-          id: matchId++,
-          player1: i,
-          player2: j,
-          round: round,
-          player1Score: null,
-          player2Score: null,
-          completed: false
-        });
-      }
-    }
-  }
-  
-  return matches;
-};
-
 export const calculateELO = (winnerELO: number, loserELO: number, winnerScore: number, loserScore: number): EloCalculation => {
   // ELO calculation parameters
   const K_FACTOR = 32; // Standard K-factor for chess/backgammon
