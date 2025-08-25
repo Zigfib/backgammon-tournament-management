@@ -18,8 +18,12 @@ args = "npm start"
 [deployment]
 build = ["sh", "-c", "npm run build"]
 deploymentTarget = "static"
-publicDir = "public"
+publicDir = "build"
 run = ["sh", "-c", "npx serve -s build"]
+
+[[deployment.rewrites]]
+from = "/*"
+to = "/index.html"
 
 [[ports]]
 localPort = 3000
