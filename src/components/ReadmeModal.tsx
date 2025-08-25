@@ -163,112 +163,109 @@ This tournament manager handles all standard round-robin tournament scenarios an
 
 For best results, export your tournament data regularly and keep JSON backups of important tournaments.`;
 
-  // Helper function to format text with bold markdown
-  const formatText = (text: string): JSX.Element[] => {
-    const parts = text.split(/(\*\*.*?\*\*)/);
-    return parts.map((part, idx) => {
-      if (part.startsWith('**') && part.endsWith('**')) {
-        return <strong key={idx}>{part.slice(2, -2)}</strong>;
-      }
-      return <span key={idx}>{part}</span>;
-    });
-  };
-
-  // Convert markdown-like content to JSX
+  // Convert markdown-like content to JSX with simpler approach
   const renderContent = () => {
     const lines = readmeContent.split('\n');
     const elements: JSX.Element[] = [];
     let key = 0;
 
-    for (let i = 0; i < lines.length; i++) {
+    const formatText = (text: string) => {
+      // Simple bold text replacement
+      const parts = text.split(/(\*\*[^*]+\*\*)/g);
+      return parts.map((part, idx) => {
+        if (part.startsWith('**') && part.endsWith('**') && part.length > 4) {
+          return <strong key={idx}>{part.slice(2, -2)}</strong>;
+        }
+        return part;
+      });
+    };
+
+    let i = 0;
+    while (i < lines.length) {
       const line = lines[i];
 
       if (line.startsWith('# ')) {
         elements.push(
-          <h1 key={key++} style={{ color: '#2c3e50', marginTop: '20px', marginBottom: '10px' }}>
+          <h1 key={key++} style={{ color: '#2c3e50', marginTop: '20px', marginBottom: '10px', fontSize: '28px' }}>
             {formatText(line.substring(2))}
           </h1>
         );
       } else if (line.startsWith('## ')) {
         elements.push(
-          <h2 key={key++} style={{ color: '#34495e', marginTop: '20px', marginBottom: '10px', fontSize: '20px' }}>
+          <h2 key={key++} style={{ color: '#34495e', marginTop: '20px', marginBottom: '10px', fontSize: '22px' }}>
             {formatText(line.substring(3))}
           </h2>
         );
       } else if (line.startsWith('### ')) {
         elements.push(
-          <h3 key={key++} style={{ color: '#7f8c8d', marginTop: '15px', marginBottom: '8px', fontSize: '16px' }}>
+          <h3 key={key++} style={{ color: '#7f8c8d', marginTop: '15px', marginBottom: '8px', fontSize: '18px' }}>
             {formatText(line.substring(4))}
           </h3>
         );
       } else if (line.startsWith('#### ')) {
         elements.push(
-          <h4 key={key++} style={{ color: '#95a5a6', marginTop: '12px', marginBottom: '6px', fontSize: '14px', fontWeight: 'bold' }}>
+          <h4 key={key++} style={{ color: '#95a5a6', marginTop: '12px', marginBottom: '6px', fontSize: '16px', fontWeight: 'bold' }}>
             {formatText(line.substring(5))}
           </h4>
         );
       } else if (line.startsWith('- ')) {
+        // Handle bullet lists
         const listItems = [];
-        let j = i;
-        while (j < lines.length && (lines[j].startsWith('- ') || lines[j].startsWith('  - ') || lines[j].trim() === '')) {
-          const item = lines[j];
-          if (item.trim() === '') {
-            j++;
-            continue;
-          }
+        while (i < lines.length && (lines[i].startsWith('- ') || lines[i].startsWith('  - '))) {
+          const item = lines[i];
           if (item.startsWith('  - ')) {
-            // Nested list item
             listItems.push(
-              <li key={key++} style={{ marginLeft: '20px' }}>
+              <li key={key++} style={{ marginLeft: '20px', marginBottom: '4px' }}>
                 {formatText(item.substring(4))}
               </li>
             );
-          } else if (item.startsWith('- ')) {
-            // Regular list item
+          } else {
             listItems.push(
-              <li key={key++}>
+              <li key={key++} style={{ marginBottom: '4px' }}>
                 {formatText(item.substring(2))}
               </li>
             );
           }
-          j++;
+          i++;
         }
-        elements.push(<ul key={key++} style={{ marginBottom: '10px', paddingLeft: '20px' }}>{listItems}</ul>);
-        i = j - 1;
+        elements.push(
+          <ul key={key++} style={{ marginBottom: '15px', paddingLeft: '20px' }}>
+            {listItems}
+          </ul>
+        );
+        i--; // Adjust for the increment at the end of the loop
       } else if (line.match(/^\d+\. /)) {
+        // Handle numbered lists
         const listItems = [];
-        let j = i;
-        while (j < lines.length && (lines[j].match(/^\d+\. /) || lines[j].trim() === '')) {
-          const item = lines[j];
-          if (item.trim() === '') {
-            j++;
-            continue;
-          }
+        while (i < lines.length && lines[i].match(/^\d+\. /)) {
+          const item = lines[i];
           const content = item.replace(/^\d+\. /, '');
           listItems.push(
-            <li key={key++}>
+            <li key={key++} style={{ marginBottom: '4px' }}>
               {formatText(content)}
             </li>
           );
-          j++;
+          i++;
         }
-        elements.push(<ol key={key++} style={{ marginBottom: '10px', paddingLeft: '20px' }}>{listItems}</ol>);
-        i = j - 1;
+        elements.push(
+          <ol key={key++} style={{ marginBottom: '15px', paddingLeft: '20px' }}>
+            {listItems}
+          </ol>
+        );
+        i--; // Adjust for the increment at the end of the loop
       } else if (line.trim() === '') {
-        // Only add break if it's not already handled by list processing
-        if (i > 0 && !lines[i-1].startsWith('- ') && !lines[i-1].match(/^\d+\. /)) {
-          elements.push(<div key={key++} style={{ height: '10px' }} />);
-        }
-      } else {
-        // Regular paragraph
-        if (line.trim()) {
-          elements.push(
-            <p key={key++} style={{ marginBottom: '8px', lineHeight: '1.6' }}>
-              {formatText(line)}
-            </p>
-          );
-        }
+        // Empty line - add some spacing
+        elements.push(<div key={key++} style={{ height: '10px' }} />);
+      } else if (line.trim()) {
+        // Regular paragraph text
+        elements.push(
+          <p key={key++} style={{ marginBottom: '12px', lineHeight: '1.6', fontSize: '14px' }}>
+            {formatText(line)}
+          </p>
+        );
       }
+      
+      i++;
     }
 
     return elements;
