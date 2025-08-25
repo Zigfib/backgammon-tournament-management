@@ -16,7 +16,10 @@ task = "shell.exec"
 args = "npm start"
 
 [deployment]
-run = ["sh", "-c", "start"]
+build = ["sh", "-c", "npm run build"]
+deploymentTarget = "static"
+publicDir = "public"
+run = ["sh", "-c", "npx serve -s build"]
 
 [[ports]]
 localPort = 3000
