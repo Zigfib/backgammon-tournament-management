@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 interface ReadmeModalProps {
@@ -164,6 +163,83 @@ This tournament manager handles all standard round-robin tournament scenarios an
 
 For best results, export your tournament data regularly and keep JSON backups of important tournaments.`;
 
+  // Convert markdown-like content to JSX
+  const renderContent = () => {
+    const lines = readmeContent.split('\n');
+    const elements: JSX.Element[] = [];
+    let key = 0;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+
+      if (line.startsWith('# ')) {
+        elements.push(<h1 key={key++} style={{ color: '#2c3e50', marginTop: '20px', marginBottom: '10px' }}>{line.substring(2)}</h1>);
+      } else if (line.startsWith('## ')) {
+        elements.push(<h2 key={key++} style={{ color: '#34495e', marginTop: '20px', marginBottom: '10px', fontSize: '20px' }}>{line.substring(3)}</h2>);
+      } else if (line.startsWith('### ')) {
+        elements.push(<h3 key={key++} style={{ color: '#7f8c8d', marginTop: '15px', marginBottom: '8px', fontSize: '16px' }}>{line.substring(4)}</h3>);
+      } else if (line.startsWith('#### ')) {
+        elements.push(<h4 key={key++} style={{ color: '#95a5a6', marginTop: '12px', marginBottom: '6px', fontSize: '14px', fontWeight: 'bold' }}>{line.substring(5)}</h4>);
+      } else if (line.startsWith('- ')) {
+        const listItems = [];
+        let j = i;
+        while (j < lines.length && (lines[j].startsWith('- ') || lines[j].startsWith('  - '))) {
+          const item = lines[j];
+          if (item.startsWith('  - ')) {
+            // Nested list item
+            listItems.push(<li key={key++} style={{ marginLeft: '20px' }}>{item.substring(4).replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')}</li>);
+          } else {
+            // Regular list item
+            const content = item.substring(2);
+            const parts = content.split(/(\*\*.*?\*\*)/);
+            const formattedContent = parts.map((part, idx) => {
+              if (part.startsWith('**') && part.endsWith('**')) {
+                return <strong key={idx}>{part.slice(2, -2)}</strong>;
+              }
+              return part;
+            });
+            listItems.push(<li key={key++}>{formattedContent}</li>);
+          }
+          j++;
+        }
+        elements.push(<ul key={key++} style={{ marginBottom: '10px' }}>{listItems}</ul>);
+        i = j - 1;
+      } else if (line.match(/^\d+\. /)) {
+        const listItems = [];
+        let j = i;
+        while (j < lines.length && lines[j].match(/^\d+\. /)) {
+          const item = lines[j];
+          const content = item.replace(/^\d+\. /, '');
+          const parts = content.split(/(\*\*.*?\*\*)/);
+          const formattedContent = parts.map((part, idx) => {
+            if (part.startsWith('**') && part.endsWith('**')) {
+              return <strong key={idx}>{part.slice(2, -2)}</strong>;
+            }
+            return part;
+          });
+          listItems.push(<li key={key++}>{formattedContent}</li>);
+          j++;
+        }
+        elements.push(<ol key={key++} style={{ marginBottom: '10px' }}>{listItems}</ol>);
+        i = j - 1;
+      } else if (line.trim() === '') {
+        elements.push(<br key={key++} />);
+      } else {
+        // Regular paragraph
+        const parts = line.split(/(\*\*.*?\*\*)/);
+        const formattedContent = parts.map((part, idx) => {
+          if (part.startsWith('**') && part.endsWith('**')) {
+            return <strong key={idx}>{part.slice(2, -2)}</strong>;
+          }
+          return part;
+        });
+        elements.push(<p key={key++} style={{ marginBottom: '8px' }}>{formattedContent}</p>);
+      }
+    }
+
+    return elements;
+  };
+
   return (
     <div style={{
       position: 'fixed',
@@ -224,206 +300,7 @@ For best results, export your tournament data regularly and keep JSON backups of
           fontSize: '14px',
           lineHeight: '1.6'
         }}>
-          <h1>🎲 Backgammon Tournament Manager</h1>
-          <p>A comprehensive web application for managing round-robin backgammon tournaments with ELO ratings, built with React and TypeScript.</p>
-          
-          <h2>Features</h2>
-          <ul>
-            <li><strong>Tournament Management</strong>: Create and manage tournaments with custom names</li>
-            <li><strong>Player Management</strong>: Add 3-32 players with customizable starting ELO ratings</li>
-            <li><strong>Match Tracking</strong>: Record match results with automatic ELO calculations</li>
-            <li><strong>Dual Ranking Systems</strong>:
-              <ul>
-                <li>Standard: Points-based ranking with tiebreakers</li>
-                <li>Hybrid: Alternating points and ELO improvement rankings</li>
-              </ul>
-            </li>
-            <li><strong>Data Persistence</strong>: Save/load tournaments locally and export/import JSON files</li>
-            <li><strong>Real-time Statistics</strong>: Live tournament standings and player statistics</li>
-          </ul>
-
-          <h2>How to Use</h2>
-
-          <h3>1. Starting a New Tournament</h3>
-          <h4>Tournament Setup:</h4>
-          <ul>
-            <li>Enter a tournament name (optional but recommended)</li>
-            <li>Set the number of players (3-32)</li>
-            <li>Choose number of rounds (default: 2)</li>
-            <li>Set maximum points per match (default: 11)</li>
-            <li>Select ranking system (Standard or Hybrid)</li>
-            <li>Choose score entry mode:
-              <ul>
-                <li><strong>Admin Only</strong>: Only admins can enter scores</li>
-                <li><strong>Player Entry</strong>: Players can enter their own scores</li>
-                <li><strong>Dual Confirm</strong>: Both players must confirm scores</li>
-                <li><strong>Open Access</strong>: Anyone can enter scores</li>
-              </ul>
-            </li>
-          </ul>
-
-          <h4>Player Setup:</h4>
-          <ul>
-            <li>Enter player names</li>
-            <li>Set starting ELO ratings (default: 1500)</li>
-            <li>Add contact information (optional)</li>
-          </ul>
-
-          <h4>Start Tournament:</h4>
-          <p>Click "Start Tournament" to begin</p>
-
-          <h3>2. During the Tournament</h3>
-          
-          <h4>Recording Match Results</h4>
-          <ul>
-            <li>Navigate to the <strong>Matches</strong> tab</li>
-            <li>Find the match you want to record</li>
-            <li>Enter scores for both players</li>
-            <li>Scores are automatically validated and ELO ratings updated</li>
-          </ul>
-
-          <h4>Viewing Standings</h4>
-          <ul>
-            <li>Check the <strong>Standings</strong> tab for current rankings</li>
-            <li>Rankings update automatically as matches are completed</li>
-            <li>See detailed tiebreaker information</li>
-          </ul>
-
-          <h4>Tournament Statistics</h4>
-          <p>View the <strong>Statistics</strong> tab for:</p>
-          <ul>
-            <li>Match completion progress</li>
-            <li>Player performance metrics</li>
-            <li>ELO rating changes</li>
-          </ul>
-
-          <h3>3. Saving and Loading</h3>
-
-          <h4>Save Tournament</h4>
-          <ul>
-            <li>Click <strong>💾 Save Tournament</strong> to save locally in browser storage</li>
-            <li>Data persists between browser sessions</li>
-          </ul>
-
-          <h4>Export Tournament</h4>
-          <ul>
-            <li>Click <strong>⬇️ Export JSON</strong> to download tournament data</li>
-            <li>File is named automatically using tournament name and date</li>
-            <li>Can be shared with others or used as backup</li>
-          </ul>
-
-          <h4>Import Tournament</h4>
-          <ul>
-            <li>Click <strong>⬆️ Import JSON</strong> to load a previously exported tournament</li>
-            <li>Select the JSON file from your device</li>
-            <li>All tournament data will be restored</li>
-          </ul>
-
-          <h4>Load Tournament</h4>
-          <ul>
-            <li>Click <strong>📂 Load Tournament</strong> to load the last saved tournament from browser storage</li>
-          </ul>
-
-          <h3>4. Ranking Systems Explained</h3>
-
-          <h4>Standard Ranking</h4>
-          <p>Ranks players by:</p>
-          <ol>
-            <li><strong>Total Points</strong> (3 points for win, 1 for loss)</li>
-            <li><strong>Wins vs Same Points</strong> (head-to-head against tied players)</li>
-            <li><strong>Buchholz Score</strong> (sum of all opponents' points)</li>
-            <li><strong>Goal Difference</strong> (total point differential)</li>
-          </ol>
-
-          <h4>Hybrid Ranking</h4>
-          <p>Alternating system:</p>
-          <ul>
-            <li><strong>Positions 1-2</strong>: Ranked by points + tiebreakers</li>
-            <li><strong>Positions 3-4</strong>: Ranked by ELO improvement + tiebreakers</li>
-            <li><strong>Pattern continues</strong>: 5-6 by points, 7-8 by ELO, etc.</li>
-          </ul>
-
-          <h3>5. Score Entry Modes</h3>
-          <ul>
-            <li><strong>Admin Only</strong>: Only users in admin mode can enter scores</li>
-            <li><strong>Player Entry</strong>: Any player can enter scores for matches they're involved in</li>
-            <li><strong>Dual Confirm</strong>: Both players must enter matching scores for confirmation</li>
-            <li><strong>Open Access</strong>: Anyone can enter any match scores</li>
-          </ul>
-
-          <h3>6. Tips for Tournament Directors</h3>
-
-          <h4>Before Starting:</h4>
-          <ul>
-            <li>Set appropriate ELO starting ratings based on player skill levels</li>
-            <li>Choose the ranking system that best fits your tournament format</li>
-            <li>Decide on the score entry mode based on trust level and supervision</li>
-          </ul>
-
-          <h4>During Tournament:</h4>
-          <ul>
-            <li>Regularly export tournament data as backup</li>
-            <li>Monitor the Statistics tab to track progress</li>
-            <li>Use the Standings tab to announce current positions</li>
-          </ul>
-
-          <h4>After Tournament:</h4>
-          <ul>
-            <li>Export final results as JSON for records</li>
-            <li>Share the tournament file with participants</li>
-            <li>Review ELO changes for future tournaments</li>
-          </ul>
-
-          <h2>Technical Requirements</h2>
-          <ul>
-            <li>Modern web browser (Chrome, Firefox, Safari, Edge)</li>
-            <li>JavaScript enabled</li>
-            <li>No installation required - runs entirely in the browser</li>
-          </ul>
-
-          <h2>Browser Storage</h2>
-          <ul>
-            <li>Tournament data is saved locally in your browser</li>
-            <li>Data persists between sessions</li>
-            <li>Export tournaments as JSON files for permanent storage and sharing</li>
-          </ul>
-
-          <h2>Troubleshooting</h2>
-          
-          <h4>Tournament not loading?</h4>
-          <ul>
-            <li>Check if you have a saved tournament in browser storage</li>
-            <li>Try importing a previously exported JSON file</li>
-          </ul>
-
-          <h4>Matches not saving?</h4>
-          <ul>
-            <li>Ensure both scores are entered as valid numbers</li>
-            <li>Check that you have permission based on the score entry mode</li>
-          </ul>
-
-          <h4>Rankings look wrong?</h4>
-          <ul>
-            <li>Verify you understand the selected ranking system</li>
-            <li>Check that all matches have been properly recorded</li>
-          </ul>
-
-          <h4>Data lost?</h4>
-          <ul>
-            <li>Browser storage can be cleared by browser settings</li>
-            <li>Always export important tournaments as JSON files</li>
-          </ul>
-
-          <h2>Support</h2>
-          <p>This tournament manager handles all standard round-robin tournament scenarios and automatically manages:</p>
-          <ul>
-            <li>Match generation (all players play each other the specified number of rounds)</li>
-            <li>ELO rating calculations with margin of victory considerations</li>
-            <li>Comprehensive tiebreaker systems</li>
-            <li>Data persistence and sharing capabilities</li>
-          </ul>
-
-          <p>For best results, export your tournament data regularly and keep JSON backups of important tournaments.</p>
+          {renderContent()}
         </div>
       </div>
     </div>
