@@ -13,6 +13,25 @@ const MatchEntry: React.FC<MatchEntryProps> = ({ tournament, setTournament }) =>
     setTournament(prev => updateMatchResult(prev, matchId, player1Score, player2Score));
   };
 
+  // Safety check for matches and players
+  if (!tournament.matches || tournament.matches.length === 0) {
+    return (
+      <div>
+        <h2>Enter Match Results</h2>
+        <p>No matches available. Please ensure the tournament has been properly set up with players.</p>
+      </div>
+    );
+  }
+
+  if (!tournament.players || tournament.players.length === 0) {
+    return (
+      <div>
+        <h2>Enter Match Results</h2>
+        <p>No players available. Please set up players first.</p>
+      </div>
+    );
+  }
+
   return (
     <div>
       <h2>Enter Match Results</h2>

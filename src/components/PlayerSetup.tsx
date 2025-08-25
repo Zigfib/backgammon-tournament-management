@@ -1,5 +1,5 @@
 import React from 'react';
-import { Tournament } from '../types';
+import { Tournament, Match } from '../types';
 
 interface PlayerSetupProps {
   tournament: Tournament;
@@ -26,46 +26,69 @@ const PlayerSetup: React.FC<PlayerSetupProps> = ({
   };
 
   const handleStartTournament = () => {
-    // Validate required fields
-    for (let i = 0; i < tournament.players.length; i++) {
-      const player = tournament.players[i];
+    // Validate all players have names and ELO ratings
+    for (const player of tournament.players) {
       if (!player.name.trim()) {
-        alert(`Please enter a name for Player ${i + 1}`);
+        alert('Please enter names for all players');
         return;
       }
       if (!player.startingElo || player.startingElo < 100 || player.startingElo > 3000) {
-        alert(`Please enter a valid ELO rating for ${player.name} (100-3000)`);
+        alert('Please enter valid ELO ratings for all players (100-3000)');
         return;
       }
     }
 
-    // Update tournament with matches
     setTournament(prev => {
       const updatedPlayers = prev.players.map(player => ({
         ...player,
-        currentElo: player.startingElo
+        currentElo: player.startingElo,
+        matches: 0,
+        points: 0,
+        goalDiff: 0
       }));
 
-      const tournamentWithPlayers = { ...prev, players: updatedPlayers };
-      const matches = tournamentWithPlayers.matches || [];
+      // Generate matches using the utility function
+      const matches: Match[] = [];
+      let matchId = 0;
 
-      // Initialize results tracking
-      const results: Record<number, Record<number, any[]>> = {};
-      updatedPlayers.forEach(p1 => {
-        results[p1.id] = {};
-        updatedPlayers.forEach(p2 => {
-          if (p1.id !== p2.id) {
-            results[p1.id][p2.id] = [];
+      for (let round = 1; round <= prev.numRounds; round++) {
+        for (let i = 0; i < updatedPlayers.length; i++) {
+          for (let j = i + 1; j < updatedPlayers.length; j++) {
+            matches.push({
+              id: matchId++,
+              player1: i,
+              player2: j,
+              round: round,
+              player1Score: null,
+              player2Score: null,
+              completed: false
+            });
           }
-        });
-      });
+        }
+      }
 
-      return {
+      console.log('Generated matches:', matches.length); // Debug log
+
+      // Initialize results tracking using player array indices (not IDs)
+      const results: Record<number, Record<number, any[]>> = {};
+      for (let i = 0; i < updatedPlayers.length; i++) {
+        results[i] = {};
+        for (let j = 0; j < updatedPlayers.length; j++) {
+          if (i !== j) {
+            results[i][j] = [];
+          }
+        }
+      }
+
+      const newTournament = {
         ...prev,
         players: updatedPlayers,
         matches,
         results
       };
+
+      console.log('Tournament with matches:', newTournament); // Debug log
+      return newTournament;
     });
 
     onStartTournament();
