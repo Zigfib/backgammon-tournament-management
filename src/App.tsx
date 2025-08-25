@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Tournament } from './types';
 import Header from './components/Header';
 import TournamentSetup from './components/TournamentSetup';
@@ -33,6 +33,15 @@ const App: React.FC = () => {
   const handleStartTournament = () => {
     setAppState('tournament');
   };
+
+  // Update document title when tournament name changes
+  useEffect(() => {
+    if (tournament.name && tournament.name.trim()) {
+      document.title = `${tournament.name} - Backgammon Tournament Manager`;
+    } else {
+      document.title = 'Backgammon Tournament Manager';
+    }
+  }, [tournament.name]);
 
   return (
     <div className="container">

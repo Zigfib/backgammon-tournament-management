@@ -35,7 +35,8 @@ const TournamentSetup: React.FC<TournamentSetupProps> = ({
           <input 
             type="text" 
             id="tournamentName" 
-            value={tournament.name || "Championship 2025"}
+            value={tournament.name}
+            placeholder="Enter tournament name"
             onChange={(e) => handleInputChange('name', e.target.value)}
           />
         </div>

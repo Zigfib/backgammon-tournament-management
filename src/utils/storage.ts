@@ -36,7 +36,10 @@ export const exportTournament = (tournament: Tournament): void => {
   const dataStr = JSON.stringify(tournament, null, 2);
   const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
   
-  const exportFileDefaultName = `${tournament.name || 'tournament'}_${new Date().toISOString().split('T')[0]}.json`;
+  const tournamentName = tournament.name && tournament.name.trim() 
+    ? tournament.name.replace(/[^a-zA-Z0-9\-_]/g, '_') 
+    : 'tournament';
+  const exportFileDefaultName = `${tournamentName}_${new Date().toISOString().split('T')[0]}.json`;
   
   const linkElement = document.createElement('a');
   linkElement.setAttribute('href', dataUri);
