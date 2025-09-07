@@ -66,8 +66,21 @@ const TournamentTable: React.FC<TournamentTableProps> = ({ tournament }) => {
                   if (i === j) {
                     return <td key={opponent.id} className="diagonal-cell">—</td>;
                   } else {
-                    const results = tournament.results?.[i]?.[j] || [];
-                    const cellContent = results.map(result => result.points1).join(', ');
+                    // Check both directions for results
+                    const resultsItoJ = tournament.results?.[i]?.[j] || [];
+                    const resultsJtoI = tournament.results?.[j]?.[i] || [];
+                    
+                    let cellContent = '';
+                    
+                    // If there are results from i to j, show points1 (player i's points)
+                    if (resultsItoJ.length > 0) {
+                      cellContent = resultsItoJ.map(result => result.points1).join(', ');
+                    }
+                    // If there are results from j to i, show points2 (player i's points when j was the "primary" player)
+                    else if (resultsJtoI.length > 0) {
+                      cellContent = resultsJtoI.map(result => result.points2).join(', ');
+                    }
+                    
                     return <td key={opponent.id}>{cellContent || '—'}</td>;
                   }
                 })}
