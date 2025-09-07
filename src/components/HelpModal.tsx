@@ -51,10 +51,10 @@ const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
           ×
         </button>
         
-        <div style={{ marginRight: '40px', color: '#333' }}>
-          <h1 style={{ color: '#2c3e50', marginBottom: '20px' }}>🎲 How to Use the Backgammon Tournament Manager</h1>
+        <div style={{ marginRight: '40px', color: '#333', textAlign: 'left' }}>
+          <h1 style={{ color: '#2c3e50', marginBottom: '20px', textAlign: 'left' }}>🎲 How to Use the Backgammon Tournament Manager</h1>
           
-          <h2 style={{ color: '#2c3e50', marginTop: '30px', marginBottom: '15px' }}>Starting a New Tournament</h2>
+          <h2 style={{ color: '#2c3e50', marginTop: '30px', marginBottom: '15px', textAlign: 'left' }}>Starting a New Tournament</h2>
           <ol style={listStyle}>
             <li><strong style={{ color: '#333' }}>Tournament Setup</strong>:
               <ul style={subListStyle}>
@@ -69,14 +69,14 @@ const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
             <li><strong style={{ color: '#333' }}>Player Setup</strong>:
               <ul style={subListStyle}>
                 <li>Enter player names</li>
-                <li>Set starting ELO ratings (default: 1500)</li>
+                <li>Set starting ELO ratings - you can find official UK ratings at <a href="https://results.ukbgf.com/ratings" target="_blank" style={{ color: '#2196f3' }}>UKBGF Rating Database</a> (default: 1500 if not known)</li>
                 <li>Add contact information (optional)</li>
               </ul>
             </li>
             <li><strong style={{ color: '#333' }}>Start Tournament</strong>: Click "Start Tournament" to begin</li>
           </ol>
 
-          <h2 style={{ color: '#2c3e50', marginTop: '30px', marginBottom: '15px' }}>Score Entry Features</h2>
+          <h2 style={{ color: '#2c3e50', marginTop: '30px', marginBottom: '15px', textAlign: 'left' }}>Score Entry Features</h2>
           <ul style={listStyle}>
             <li><strong style={{ color: '#333' }}>Submit Score System</strong>: Scores are entered and then deliberately submitted with a button</li>
             <li><strong style={{ color: '#333' }}>Smart Validation</strong>: Only valid backgammon scores are accepted (one player reaches maximum points)</li>
@@ -84,7 +84,7 @@ const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
             <li><strong style={{ color: '#333' }}>Edit Capability</strong>: Previously submitted scores can be edited if needed</li>
           </ul>
 
-          <h2 style={{ color: '#2c3e50', marginTop: '30px', marginBottom: '15px' }}>Recording Match Results</h2>
+          <h2 style={{ color: '#2c3e50', marginTop: '30px', marginBottom: '15px', textAlign: 'left' }}>Recording Match Results</h2>
           <ol style={listStyle}>
             <li>Navigate to the <strong style={{ color: '#333' }}>"Enter Match Results"</strong> tab</li>
             <li>Find the match you want to record</li>
@@ -104,16 +104,29 @@ const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
             </li>
           </ol>
 
-          <h2 style={{ color: '#2c3e50', marginTop: '30px', marginBottom: '15px' }}>Tournament Management</h2>
+          <h2 style={{ color: '#2c3e50', marginTop: '30px', marginBottom: '15px', textAlign: 'left' }}>Tournament Management</h2>
+          
+          <h3 style={{ color: '#34495e', marginTop: '20px', marginBottom: '10px', textAlign: 'left' }}>Browser Storage (Quick Save/Load)</h3>
           <ul style={listStyle}>
-            <li><strong style={{ color: '#333' }}>Save Tournament</strong>: Click "💾 Save Tournament" to save locally in browser storage</li>
-            <li><strong style={{ color: '#333' }}>Export Tournament</strong>: Click "⬇️ Export JSON" to download tournament data</li>
-            <li><strong style={{ color: '#333' }}>Import Tournament</strong>: Click "⬆️ Import JSON" to load a previously exported tournament</li>
-            <li><strong style={{ color: '#333' }}>Load Tournament</strong>: Click "📂 Load Tournament" to load the last saved tournament</li>
+            <li><strong style={{ color: '#333' }}>Save Tournament</strong>: Click "💾 Save Tournament" to save your tournament in the browser's local storage. This is quick and convenient for ongoing tournaments.</li>
+            <li><strong style={{ color: '#333' }}>Load Tournament</strong>: Click "📂 Load Tournament" to restore the last tournament you saved in this browser. Perfect for continuing where you left off.</li>
+          </ul>
+          
+          <h3 style={{ color: '#34495e', marginTop: '20px', marginBottom: '10px', textAlign: 'left' }}>File-Based Backup (JSON Export/Import)</h3>
+          <ul style={listStyle}>
+            <li><strong style={{ color: '#333' }}>Export Tournament</strong>: Click "⬇️ Export JSON" to download your tournament data as a file. Use this to:
+              <ul style={subListStyle}>
+                <li>Create permanent backups</li>
+                <li>Share tournaments with others</li>
+                <li>Move tournaments between different computers/browsers</li>
+                <li>Archive completed tournaments</li>
+              </ul>
+            </li>
+            <li><strong style={{ color: '#333' }}>Import Tournament</strong>: Click "⬆️ Import JSON" to load a tournament from a previously exported file. This works across different browsers and computers.</li>
           </ul>
 
-          <h2 style={{ color: '#2c3e50', marginTop: '30px', marginBottom: '15px' }}>Ranking Systems</h2>
-          <h3 style={{ color: '#34495e', marginTop: '20px', marginBottom: '10px' }}>Standard Ranking</h3>
+          <h2 style={{ color: '#2c3e50', marginTop: '30px', marginBottom: '15px', textAlign: 'left' }}>Ranking Systems</h2>
+          <h3 style={{ color: '#34495e', marginTop: '20px', marginBottom: '10px', textAlign: 'left' }}>Standard Ranking</h3>
           <p style={textStyle}>Ranks players by:</p>
           <ol style={listStyle}>
             <li><strong style={{ color: '#333' }}>Total Points</strong> (3 points for win, 1 for loss)</li>
@@ -122,7 +135,7 @@ const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
             <li><strong style={{ color: '#333' }}>Goal Difference</strong> (total point differential)</li>
           </ol>
 
-          <h3 style={{ color: '#34495e', marginTop: '20px', marginBottom: '10px' }}>Hybrid Ranking</h3>
+          <h3 style={{ color: '#34495e', marginTop: '20px', marginBottom: '10px', textAlign: 'left' }}>Hybrid Ranking</h3>
           <p style={textStyle}>Alternating system:</p>
           <ul style={listStyle}>
             <li><strong style={{ color: '#333' }}>Positions 1-2</strong>: Ranked by points + tiebreakers</li>
@@ -130,7 +143,7 @@ const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
             <li><strong style={{ color: '#333' }}>Pattern continues</strong>: 5-6 by points, 7-8 by ELO, etc.</li>
           </ul>
 
-          <h2 style={{ color: '#2c3e50', marginTop: '30px', marginBottom: '15px' }}>Troubleshooting</h2>
+          <h2 style={{ color: '#2c3e50', marginTop: '30px', marginBottom: '15px', textAlign: 'left' }}>Troubleshooting</h2>
           <ul style={listStyle}>
             <li><strong style={{ color: '#333' }}>Submit Score button not active?</strong>
               <ul style={subListStyle}>
@@ -155,9 +168,9 @@ const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
             marginTop: '30px',
             borderLeft: '4px solid #2196f3'
           }}>
-            <h3 style={{ color: '#1976d2', marginTop: '0', marginBottom: '10px' }}>💡 Tips for Tournament Directors</h3>
+            <h3 style={{ color: '#1976d2', marginTop: '0', marginBottom: '10px', textAlign: 'left' }}>💡 Tips for Tournament Directors</h3>
             <ul style={{ ...listStyle, margin: '0' }}>
-              <li>Set appropriate ELO starting ratings based on player skill levels</li>
+              <li>Set appropriate ELO starting ratings - check the <a href="https://results.ukbgf.com/ratings" target="_blank" style={{ color: '#2196f3' }}>UKBGF Rating Database</a> for official UK player ratings</li>
               <li>Choose the ranking system that best fits your tournament format</li>
               <li>Regularly export tournament data as backup</li>
               <li>Monitor the Statistics tab to track progress</li>
