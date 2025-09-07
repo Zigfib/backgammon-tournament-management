@@ -1,7 +1,8 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Tournament } from '../types';
 import { saveTournament, loadTournament, exportTournament, importTournament } from '../utils/storage';
+import HelpModal from './HelpModal';
 
 interface HeaderProps {
   tournament: Tournament;
@@ -10,6 +11,7 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ tournament, setTournament, setAppState }) => {
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
 
   const handleSave = () => {
     saveTournament(tournament);
@@ -58,9 +60,7 @@ const Header: React.FC<HeaderProps> = ({ tournament, setTournament, setAppState 
   };
 
   const handleHelp = () => {
-    // Open README in a new tab - will work in deployed version
-    const readmeUrl = `${window.location.origin}/README.md`;
-    window.open(readmeUrl, '_blank');
+    setIsHelpOpen(true);
   };
 
   return (
@@ -81,8 +81,9 @@ const Header: React.FC<HeaderProps> = ({ tournament, setTournament, setAppState 
             onChange={(e) => e.target.files?.[0] && handleImport(e.target.files[0])}
           />
         </label>
-        <button className="btn" onClick={handleHelp}>❓ Help</button>
+        <button className="btn" onClick={handleHelp}>📖 How to Use</button>
         </div>
+      <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
     </div>
   );
 };
