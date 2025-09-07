@@ -1,5 +1,6 @@
 import React from 'react';
 import { Tournament, Match } from '../types';
+import { createSwissTournament } from '../utils/swiss';
 
 interface PlayerSetupProps {
   tournament: Tournament;
@@ -47,7 +48,19 @@ const PlayerSetup: React.FC<PlayerSetupProps> = ({
         goalDiff: 0
       }));
 
-      // Generate matches using the utility function
+      // Check if this is a Swiss tournament
+      if (prev.tournamentType === 'rapid-swiss') {
+        // Create Swiss tournament - no pre-generated matches
+        const swissTournament = createSwissTournament({
+          ...prev,
+          players: updatedPlayers
+        }, 7, 1); // 7 rounds max, 1 point difference allowed
+        
+        console.log('Created Swiss tournament:', swissTournament);
+        return swissTournament as any; // Type assertion needed due to interface differences
+      }
+
+      // Original round-robin logic
       const matches: Match[] = [];
       let matchId = 0;
 

@@ -98,6 +98,18 @@ const TournamentSetup: React.FC<TournamentSetupProps> = ({
         </div>
         
         <div className="input-group">
+          <label htmlFor="tournamentType">Tournament Format</label>
+          <select 
+            id="tournamentType" 
+            value={tournament.tournamentType || 'round-robin'}
+            onChange={(e) => handleInputChange('tournamentType', e.target.value as 'round-robin' | 'rapid-swiss')}
+          >
+            <option value="round-robin">Round-Robin (Everyone plays everyone)</option>
+            <option value="rapid-swiss">Rapid Swiss (Real-time pairing as matches finish)</option>
+          </select>
+        </div>
+        
+        <div className="input-group">
           <label htmlFor="rankingSystem">Ranking System</label>
           <select 
             id="rankingSystem" 

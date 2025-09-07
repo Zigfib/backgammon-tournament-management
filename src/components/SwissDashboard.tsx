@@ -1,0 +1,298 @@
+import React, { useState, useEffect } from 'react';
+import { 
+  SwissTournament, 
+  PairingSuggestion, 
+  PairingScenario 
+} from '../types';
+import { 
+  initiatePairingProcess, 
+  implementPairing, 
+  getPlayerStatus 
+} from '../utils/swiss';
+
+interface SwissDashboardProps {
+  tournament: SwissTournament;
+  setTournament: React.Dispatch<React.SetStateAction<SwissTournament>>;
+}
+
+const SwissDashboard: React.FC<SwissDashboardProps> = ({ tournament, setTournament }) => {
+  const [pairingSuggestions, setPairingSuggestions] = useState<PairingSuggestion[]>([]);
+  const [scenario, setScenario] = useState<PairingScenario | null>(null);
+  const [canProceed, setCanProceed] = useState(false);
+  const [message, setMessage] = useState('');
+  const [autoRefresh, setAutoRefresh] = useState(true);
+
+  // Update pairing suggestions when tournament changes
+  useEffect(() => {
+    if (autoRefresh) {
+      const result = initiatePairingProcess(tournament);
+      setPairingSuggestions(result.suggestions);
+      setScenario(result.scenario);
+      setCanProceed(result.canProceed);
+      setMessage(result.message);
+    }
+  }, [tournament, autoRefresh]);
+
+  const handleImplementPairing = (suggestion: PairingSuggestion) => {
+    const updatedTournament = implementPairing(tournament, suggestion);
+    setTournament(updatedTournament);
+  };
+
+  const getStatusColor = (status: string): string => {
+    switch (status) {
+      case 'ready-to-pair': return '#28a745'; // Green
+      case 'playing': return '#ffc107'; // Yellow
+      case 'finished': return '#6c757d'; // Gray
+      case 'waiting': return '#17a2b8'; // Blue
+      default: return '#dee2e6';
+    }
+  };
+
+  const getStatusIcon = (status: string): string => {
+    switch (status) {
+      case 'ready-to-pair': return '🟢';
+      case 'playing': return '🟡';
+      case 'finished': return '⚫';
+      case 'waiting': return '🔵';
+      default: return '⚪';
+    }
+  };
+
+  const currentMatches = tournament.matches.filter(m => m.isCurrentlyPlaying);
+  const completedMatches = tournament.matches.filter(m => m.completed);
+  
+  // Update player statuses dynamically
+  const playersWithStatus = tournament.players.map(player => ({
+    ...player,
+    status: getPlayerStatus(player, tournament)
+  }));
+
+  const statusCounts = playersWithStatus.reduce((counts, player) => {
+    counts[player.status] = (counts[player.status] || 0) + 1;
+    return counts;
+  }, {} as Record<string, number>);
+
+  return (
+    <div style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <h2>🏆 Rapid Swiss Tournament Dashboard</h2>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+            <input 
+              type="checkbox" 
+              checked={autoRefresh}
+              onChange={(e) => setAutoRefresh(e.target.checked)}
+            />
+            Auto-refresh pairings
+          </label>
+          <button 
+            className="btn"
+            onClick={() => {
+              const result = initiatePairingProcess(tournament);
+              setPairingSuggestions(result.suggestions);
+              setScenario(result.scenario);
+              setCanProceed(result.canProceed);
+              setMessage(result.message);
+            }}
+          >
+            🔄 Refresh Pairings
+          </button>
+        </div>
+      </div>
+
+      {/* Tournament Status Overview */}
+      <div style={{ 
+        display: 'grid', 
+        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
+        gap: '15px', 
+        marginBottom: '30px' 
+      }}>
+        <div style={{ 
+          background: '#f8f9fa', 
+          padding: '15px', 
+          borderRadius: '8px', 
+          border: '1px solid #dee2e6' 
+        }}>
+          <h4 style={{ margin: '0 0 10px 0', color: '#495057' }}>Tournament Progress</h4>
+          <p><strong>Round:</strong> {tournament.currentRound} / {tournament.maxRounds}</p>
+          <p><strong>Matches:</strong> {completedMatches.length} completed, {currentMatches.length} playing</p>
+        </div>
+
+        <div style={{ 
+          background: '#f8f9fa', 
+          padding: '15px', 
+          borderRadius: '8px', 
+          border: '1px solid #dee2e6' 
+        }}>
+          <h4 style={{ margin: '0 0 10px 0', color: '#495057' }}>Player Status</h4>
+          {Object.entries(statusCounts).map(([status, count]) => (
+            <p key={status} style={{ margin: '5px 0' }}>
+              {getStatusIcon(status)} <strong>{status.replace('-', ' ')}:</strong> {count}
+            </p>
+          ))}
+        </div>
+
+        {scenario && (
+          <div style={{ 
+            background: '#f8f9fa', 
+            padding: '15px', 
+            borderRadius: '8px', 
+            border: '1px solid #dee2e6' 
+          }}>
+            <h4 style={{ margin: '0 0 10px 0', color: '#495057' }}>Future Viability</h4>
+            <p><strong>Success Rate:</strong> {Math.round(scenario.probabilityOfSuccess * 100)}%</p>
+            <p><strong>Active Matches:</strong> {scenario.currentMatches.length}</p>
+            <p><strong>Scenarios Tested:</strong> {scenario.possibleOutcomes.length}</p>
+          </div>
+        )}
+      </div>
+
+      {/* Pairing Status Message */}
+      {message && (
+        <div style={{ 
+          padding: '15px', 
+          borderRadius: '8px', 
+          marginBottom: '20px',
+          backgroundColor: canProceed ? '#d4edda' : '#f8d7da',
+          border: `1px solid ${canProceed ? '#c3e6cb' : '#f5c6cb'}`,
+          color: canProceed ? '#155724' : '#721c24'
+        }}>
+          <strong>{canProceed ? '✅' : '⚠️'} {message}</strong>
+        </div>
+      )}
+
+      {/* Current Matches */}
+      {currentMatches.length > 0 && (
+        <div style={{ marginBottom: '30px' }}>
+          <h3>🟡 Current Matches in Progress</h3>
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', 
+            gap: '15px' 
+          }}>
+            {currentMatches.map(match => {
+              const player1 = tournament.players.find(p => p.id === match.player1);
+              const player2 = tournament.players.find(p => p.id === match.player2);
+              return (
+                <div key={match.id} style={{ 
+                  background: '#fff3cd', 
+                  padding: '15px', 
+                  borderRadius: '8px', 
+                  border: '1px solid #ffeaa7' 
+                }}>
+                  <h4 style={{ margin: '0 0 10px 0' }}>Round {match.round}</h4>
+                  <p><strong>{player1?.name}</strong> vs <strong>{player2?.name}</strong></p>
+                  <p style={{ fontSize: '0.9em', color: '#666' }}>
+                    Started: {match.startTime ? new Date(match.startTime).toLocaleTimeString() : 'Unknown'}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Pairing Suggestions */}
+      {pairingSuggestions.length > 0 && (
+        <div style={{ marginBottom: '30px' }}>
+          <h3>🟢 Suggested Pairings</h3>
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', 
+            gap: '15px' 
+          }}>
+            {pairingSuggestions.slice(0, 6).map((suggestion, index) => {
+              const player1 = tournament.players.find(p => p.id === suggestion.player1Id);
+              const player2 = tournament.players.find(p => p.id === suggestion.player2Id);
+              return (
+                <div key={`${suggestion.player1Id}-${suggestion.player2Id}`} style={{ 
+                  background: '#d4edda', 
+                  padding: '15px', 
+                  borderRadius: '8px', 
+                  border: '1px solid #c3e6cb' 
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div style={{ flex: 1 }}>
+                      <h4 style={{ margin: '0 0 10px 0', color: '#155724' }}>
+                        Priority: {suggestion.priority.toFixed(1)}
+                      </h4>
+                      <p><strong>{player1?.name}</strong> vs <strong>{player2?.name}</strong></p>
+                      <p style={{ fontSize: '0.9em', margin: '5px 0' }}>
+                        Points: {player1?.pointsEarned} vs {player2?.pointsEarned} 
+                        {suggestion.pointsDifference > 0 && ` (diff: ${suggestion.pointsDifference})`}
+                      </p>
+                      <p style={{ fontSize: '0.9em', margin: '5px 0' }}>
+                        ELO: {player1?.currentElo} vs {player2?.currentElo}
+                      </p>
+                      <p style={{ fontSize: '0.8em', color: '#666', fontStyle: 'italic' }}>
+                        {suggestion.reason}
+                      </p>
+                    </div>
+                    <button 
+                      className="btn"
+                      style={{ 
+                        backgroundColor: '#28a745', 
+                        color: 'white', 
+                        border: 'none',
+                        padding: '8px 12px',
+                        fontSize: '0.9em'
+                      }}
+                      onClick={() => handleImplementPairing(suggestion)}
+                    >
+                      ▶️ Pair
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Player Status Grid */}
+      <div>
+        <h3>👥 Player Status Overview</h3>
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', 
+          gap: '10px' 
+        }}>
+          {playersWithStatus.map(player => (
+            <div key={player.id} style={{ 
+              background: '#f8f9fa',
+              padding: '12px', 
+              borderRadius: '8px', 
+              border: `2px solid ${getStatusColor(player.status)}`,
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <div>
+                <strong>{player.name}</strong>
+                <div style={{ fontSize: '0.9em', color: '#666' }}>
+                  Round: {player.currentRound} | Points: {player.pointsEarned} | ELO: {player.currentElo}
+                </div>
+                <div style={{ fontSize: '0.8em', color: '#666' }}>
+                  Record: {player.totalWins}W-{player.totalLosses}L
+                </div>
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '1.2em' }}>{getStatusIcon(player.status)}</div>
+                <div style={{ 
+                  fontSize: '0.8em', 
+                  fontWeight: 'bold',
+                  color: getStatusColor(player.status),
+                  textTransform: 'capitalize'
+                }}>
+                  {player.status.replace('-', ' ')}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default SwissDashboard;

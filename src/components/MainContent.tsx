@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Tournament } from '../types';
+import { Tournament, SwissTournament } from '../types';
 import MatchEntry from './MatchEntry';
 import TournamentTable from './TournamentTable';
 import Standings from './Standings';
 import Statistics from './Statistics';
+import SwissDashboard from './SwissDashboard';
 import { calculateStats } from '../utils/tournament';
 
 interface MainContentProps {
@@ -12,7 +13,10 @@ interface MainContentProps {
 }
 
 const MainContent: React.FC<MainContentProps> = ({ tournament, setTournament }) => {
-  const [activeTab, setActiveTab] = useState<'matches' | 'table' | 'standings' | 'stats'>('matches');
+  const isSwiss = tournament.tournamentType === 'rapid-swiss';
+  const [activeTab, setActiveTab] = useState<'matches' | 'table' | 'standings' | 'stats' | 'swiss'>(() => {
+    return isSwiss ? 'swiss' : 'matches';
+  });
 
   // Update stats whenever tournament changes
   useEffect(() => {
@@ -28,11 +32,19 @@ const MainContent: React.FC<MainContentProps> = ({ tournament, setTournament }) 
   return (
     <div className="main-content">
       <div className="tabs">
+        {isSwiss && (
+          <button
+            className={`tab ${activeTab === 'swiss' ? 'active' : ''}`}
+            onClick={() => setActiveTab('swiss')}
+          >
+            🏆 Swiss Dashboard
+          </button>
+        )}
         <button
           className={`tab ${activeTab === 'matches' ? 'active' : ''}`}
           onClick={() => setActiveTab('matches')}
         >
-          Match Entry
+          {isSwiss ? 'Match History' : 'Match Entry'}
         </button>
         <button
           className={`tab ${activeTab === 'table' ? 'active' : ''}`}
@@ -54,8 +66,17 @@ const MainContent: React.FC<MainContentProps> = ({ tournament, setTournament }) 
         </button>
       </div>
 
+      {isSwiss && (
+        <div className={`tab-content ${activeTab === 'swiss' ? 'active' : ''}`}>
+          <SwissDashboard 
+            tournament={tournament as SwissTournament} 
+            setTournament={setTournament as React.Dispatch<React.SetStateAction<SwissTournament>>} 
+          />
+        </div>
+      )}
+      
       <div className={`tab-content ${activeTab === 'matches' ? 'active' : ''}`}>
-        {hasMatches ? (
+        {hasMatches || isSwiss ? (
           <MatchEntry tournament={tournament} setTournament={setTournament} />
         ) : (
           <div style={{ textAlign: 'center', padding: '40px' }}>
