@@ -57,6 +57,12 @@ const Header: React.FC<HeaderProps> = ({ tournament, setTournament, setAppState 
     setAppState('setup');
   };
 
+  const handleHelp = () => {
+    // Open README in a new tab - will work in deployed version
+    const readmeUrl = `${window.location.origin}/README.md`;
+    window.open(readmeUrl, '_blank');
+  };
+
   return (
     <div className="header">
       <h1>🎲 Backgammon Tournament Manager</h1>
@@ -75,6 +81,7 @@ const Header: React.FC<HeaderProps> = ({ tournament, setTournament, setAppState 
             onChange={(e) => e.target.files?.[0] && handleImport(e.target.files[0])}
           />
         </label>
+        <button className="btn" onClick={handleHelp}>❓ Help</button>
         </div>
     </div>
   );

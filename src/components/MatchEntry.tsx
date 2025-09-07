@@ -33,17 +33,16 @@ const MatchEntry: React.FC<MatchEntryProps> = ({ tournament, setTournament }) =>
     const scores = pendingScores[matchId];
     if (!scores) return;
 
-    const otherPlayer = player === 'player1' ? 'player2' : 'player1';
     const currentScore = player === 'player1' ? scores.player1Score : scores.player2Score;
     const otherScore = player === 'player1' ? scores.player2Score : scores.player1Score;
 
-    // If current score is less than max and other score is empty, auto-fill with max
-    if (currentScore && parseInt(currentScore) < tournament.maxPoints && !otherScore) {
+    // If the OTHER player has a score less than max and the CURRENT field is empty, auto-fill current field with max
+    if (otherScore && parseInt(otherScore) < tournament.maxPoints && !currentScore) {
       setPendingScores(prev => ({
         ...prev,
         [matchId]: {
           ...prev[matchId],
-          [otherPlayer + 'Score']: tournament.maxPoints.toString()
+          [player + 'Score']: tournament.maxPoints.toString()
         }
       }));
     }
