@@ -39,11 +39,23 @@ A comprehensive web application for managing round-robin backgammon tournaments 
 
 ### 2. During the Tournament
 
+#### Score Entry Features
+- **Submit Score System**: Scores are entered and then deliberately submitted with a button
+- **Smart Validation**: Only valid backgammon scores are accepted (one player reaches maximum points)
+- **Auto-Completion**: When entering a score below maximum, clicking the opponent's field auto-fills the maximum score
+- **Edit Capability**: Previously submitted scores can be edited if needed
+
 #### Recording Match Results
-- Navigate to the **Matches** tab
+- Navigate to the **Enter Match Results** tab
 - Find the match you want to record
-- Enter scores for both players
-- Scores are automatically validated and ELO ratings updated
+- Enter scores for both players:
+  - One score must be the tournament maximum (e.g., 5 points)
+  - The other score must be lower
+  - **Auto-completion**: When you enter a lower score and click the other field, the maximum score is automatically filled
+- Click **Submit Score** to record the match
+  - Scores only appear in the tournament table after submission
+  - The button changes to **Edit Score** after submission
+  - Scores are validated and ELO ratings updated automatically
 
 #### Viewing Standings
 - Check the **Standings** tab for current rankings
@@ -132,8 +144,11 @@ Alternating system:
 - Check if you have a saved tournament in browser storage
 - Try importing a previously exported JSON file
 
-**Matches not saving?**
+**Submit Score button not active?**
 - Ensure both scores are entered as valid numbers
+- One score must equal the tournament maximum points
+- The other score must be lower than the maximum
+- Zero-zero (0-0) scores are not allowed
 - Check that you have permission based on the score entry mode
 
 **Rankings look wrong?**
