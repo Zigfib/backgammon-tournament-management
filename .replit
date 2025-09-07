@@ -2,6 +2,7 @@ run = "start"
 modules = ["nodejs-20"]
 [nix]
 channel = "stable-25_05"
+packages = ["file", "unzip", "python3"]
 
 [workflows]
 runButton = "Project"
