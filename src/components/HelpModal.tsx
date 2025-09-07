@@ -8,6 +8,10 @@ interface HelpModalProps {
 const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
+  const textStyle = { color: '#333', lineHeight: '1.6' };
+  const listStyle = { ...textStyle, marginBottom: '20px' };
+  const subListStyle = { ...textStyle, marginTop: '5px' };
+
   return (
     <div style={{
       position: 'fixed',
@@ -47,13 +51,13 @@ const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
           ×
         </button>
         
-        <div style={{ marginRight: '40px' }}>
+        <div style={{ marginRight: '40px', color: '#333' }}>
           <h1 style={{ color: '#2c3e50', marginBottom: '20px' }}>🎲 How to Use the Backgammon Tournament Manager</h1>
           
           <h2 style={{ color: '#2c3e50', marginTop: '30px', marginBottom: '15px' }}>Starting a New Tournament</h2>
-          <ol style={{ lineHeight: '1.6', marginBottom: '20px' }}>
-            <li><strong>Tournament Setup</strong>:
-              <ul style={{ marginTop: '5px' }}>
+          <ol style={listStyle}>
+            <li><strong style={{ color: '#333' }}>Tournament Setup</strong>:
+              <ul style={subListStyle}>
                 <li>Enter a tournament name (optional but recommended)</li>
                 <li>Set the number of players (3-32)</li>
                 <li>Choose number of rounds (default: 2)</li>
@@ -62,82 +66,82 @@ const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
                 <li>Choose score entry mode (Admin Only, Player Entry, Dual Confirm, or Open Access)</li>
               </ul>
             </li>
-            <li><strong>Player Setup</strong>:
-              <ul style={{ marginTop: '5px' }}>
+            <li><strong style={{ color: '#333' }}>Player Setup</strong>:
+              <ul style={subListStyle}>
                 <li>Enter player names</li>
                 <li>Set starting ELO ratings (default: 1500)</li>
                 <li>Add contact information (optional)</li>
               </ul>
             </li>
-            <li><strong>Start Tournament</strong>: Click "Start Tournament" to begin</li>
+            <li><strong style={{ color: '#333' }}>Start Tournament</strong>: Click "Start Tournament" to begin</li>
           </ol>
 
           <h2 style={{ color: '#2c3e50', marginTop: '30px', marginBottom: '15px' }}>Score Entry Features</h2>
-          <ul style={{ lineHeight: '1.6', marginBottom: '20px' }}>
-            <li><strong>Submit Score System</strong>: Scores are entered and then deliberately submitted with a button</li>
-            <li><strong>Smart Validation</strong>: Only valid backgammon scores are accepted (one player reaches maximum points)</li>
-            <li><strong>Auto-Completion</strong>: When entering a score below maximum, clicking the opponent's field auto-fills the maximum score</li>
-            <li><strong>Edit Capability</strong>: Previously submitted scores can be edited if needed</li>
+          <ul style={listStyle}>
+            <li><strong style={{ color: '#333' }}>Submit Score System</strong>: Scores are entered and then deliberately submitted with a button</li>
+            <li><strong style={{ color: '#333' }}>Smart Validation</strong>: Only valid backgammon scores are accepted (one player reaches maximum points)</li>
+            <li><strong style={{ color: '#333' }}>Auto-Completion</strong>: When entering a score below maximum, clicking the opponent's field auto-fills the maximum score</li>
+            <li><strong style={{ color: '#333' }}>Edit Capability</strong>: Previously submitted scores can be edited if needed</li>
           </ul>
 
           <h2 style={{ color: '#2c3e50', marginTop: '30px', marginBottom: '15px' }}>Recording Match Results</h2>
-          <ol style={{ lineHeight: '1.6', marginBottom: '20px' }}>
-            <li>Navigate to the <strong>"Enter Match Results"</strong> tab</li>
+          <ol style={listStyle}>
+            <li>Navigate to the <strong style={{ color: '#333' }}>"Enter Match Results"</strong> tab</li>
             <li>Find the match you want to record</li>
             <li>Enter scores for both players:
-              <ul style={{ marginTop: '5px' }}>
+              <ul style={subListStyle}>
                 <li>One score must be the tournament maximum (e.g., 5 points)</li>
                 <li>The other score must be lower</li>
-                <li><strong>Auto-completion</strong>: When you enter a lower score and click the other field, the maximum score is automatically filled</li>
+                <li><strong style={{ color: '#333' }}>Auto-completion</strong>: When you enter a lower score and click the other field, the maximum score is automatically filled</li>
               </ul>
             </li>
-            <li>Click <strong>"Submit Score"</strong> to record the match
-              <ul style={{ marginTop: '5px' }}>
+            <li>Click <strong style={{ color: '#333' }}>"Submit Score"</strong> to record the match
+              <ul style={subListStyle}>
                 <li>Scores only appear in the tournament table after submission</li>
-                <li>The button changes to <strong>"Edit Score"</strong> after submission</li>
+                <li>The button changes to <strong style={{ color: '#333' }}>"Edit Score"</strong> after submission</li>
                 <li>Scores are validated and ELO ratings updated automatically</li>
               </ul>
             </li>
           </ol>
 
           <h2 style={{ color: '#2c3e50', marginTop: '30px', marginBottom: '15px' }}>Tournament Management</h2>
-          <ul style={{ lineHeight: '1.6', marginBottom: '20px' }}>
-            <li><strong>Save Tournament</strong>: Click "💾 Save Tournament" to save locally in browser storage</li>
-            <li><strong>Export Tournament</strong>: Click "⬇️ Export JSON" to download tournament data</li>
-            <li><strong>Import Tournament</strong>: Click "⬆️ Import JSON" to load a previously exported tournament</li>
-            <li><strong>Load Tournament</strong>: Click "📂 Load Tournament" to load the last saved tournament</li>
+          <ul style={listStyle}>
+            <li><strong style={{ color: '#333' }}>Save Tournament</strong>: Click "💾 Save Tournament" to save locally in browser storage</li>
+            <li><strong style={{ color: '#333' }}>Export Tournament</strong>: Click "⬇️ Export JSON" to download tournament data</li>
+            <li><strong style={{ color: '#333' }}>Import Tournament</strong>: Click "⬆️ Import JSON" to load a previously exported tournament</li>
+            <li><strong style={{ color: '#333' }}>Load Tournament</strong>: Click "📂 Load Tournament" to load the last saved tournament</li>
           </ul>
 
           <h2 style={{ color: '#2c3e50', marginTop: '30px', marginBottom: '15px' }}>Ranking Systems</h2>
           <h3 style={{ color: '#34495e', marginTop: '20px', marginBottom: '10px' }}>Standard Ranking</h3>
-          <p style={{ lineHeight: '1.6', marginBottom: '15px' }}>Ranks players by:</p>
-          <ol style={{ lineHeight: '1.6', marginBottom: '20px' }}>
-            <li><strong>Total Points</strong> (3 points for win, 1 for loss)</li>
-            <li><strong>Wins vs Same Points</strong> (head-to-head against tied players)</li>
-            <li><strong>Buchholz Score</strong> (sum of all opponents' points)</li>
-            <li><strong>Goal Difference</strong> (total point differential)</li>
+          <p style={textStyle}>Ranks players by:</p>
+          <ol style={listStyle}>
+            <li><strong style={{ color: '#333' }}>Total Points</strong> (3 points for win, 1 for loss)</li>
+            <li><strong style={{ color: '#333' }}>Wins vs Same Points</strong> (head-to-head against tied players)</li>
+            <li><strong style={{ color: '#333' }}>Buchholz Score</strong> (sum of all opponents' points)</li>
+            <li><strong style={{ color: '#333' }}>Goal Difference</strong> (total point differential)</li>
           </ol>
 
           <h3 style={{ color: '#34495e', marginTop: '20px', marginBottom: '10px' }}>Hybrid Ranking</h3>
-          <p style={{ lineHeight: '1.6', marginBottom: '15px' }}>Alternating system:</p>
-          <ul style={{ lineHeight: '1.6', marginBottom: '20px' }}>
-            <li><strong>Positions 1-2</strong>: Ranked by points + tiebreakers</li>
-            <li><strong>Positions 3-4</strong>: Ranked by ELO improvement + tiebreakers</li>
-            <li><strong>Pattern continues</strong>: 5-6 by points, 7-8 by ELO, etc.</li>
+          <p style={textStyle}>Alternating system:</p>
+          <ul style={listStyle}>
+            <li><strong style={{ color: '#333' }}>Positions 1-2</strong>: Ranked by points + tiebreakers</li>
+            <li><strong style={{ color: '#333' }}>Positions 3-4</strong>: Ranked by ELO improvement + tiebreakers</li>
+            <li><strong style={{ color: '#333' }}>Pattern continues</strong>: 5-6 by points, 7-8 by ELO, etc.</li>
           </ul>
 
           <h2 style={{ color: '#2c3e50', marginTop: '30px', marginBottom: '15px' }}>Troubleshooting</h2>
-          <ul style={{ lineHeight: '1.6', marginBottom: '20px' }}>
-            <li><strong>Submit Score button not active?</strong>
-              <ul style={{ marginTop: '5px' }}>
+          <ul style={listStyle}>
+            <li><strong style={{ color: '#333' }}>Submit Score button not active?</strong>
+              <ul style={subListStyle}>
                 <li>Ensure both scores are entered as valid numbers</li>
                 <li>One score must equal the tournament maximum points</li>
                 <li>The other score must be lower than the maximum</li>
                 <li>Zero-zero (0-0) scores are not allowed</li>
               </ul>
             </li>
-            <li><strong>Rankings look wrong?</strong>
-              <ul style={{ marginTop: '5px' }}>
+            <li><strong style={{ color: '#333' }}>Rankings look wrong?</strong>
+              <ul style={subListStyle}>
                 <li>Verify you understand the selected ranking system</li>
                 <li>Check that all matches have been properly recorded</li>
               </ul>
@@ -152,7 +156,7 @@ const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
             borderLeft: '4px solid #2196f3'
           }}>
             <h3 style={{ color: '#1976d2', marginTop: '0', marginBottom: '10px' }}>💡 Tips for Tournament Directors</h3>
-            <ul style={{ lineHeight: '1.6', margin: '0' }}>
+            <ul style={{ ...listStyle, margin: '0' }}>
               <li>Set appropriate ELO starting ratings based on player skill levels</li>
               <li>Choose the ranking system that best fits your tournament format</li>
               <li>Regularly export tournament data as backup</li>
