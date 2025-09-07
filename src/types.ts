@@ -45,6 +45,7 @@ export interface Tournament {
   rankingSystem: 'standard' | 'hybrid';
   scoreEntryMode: 'admin-only' | 'player-entry' | 'dual-confirm' | 'open-access';
   isAdmin: boolean;
+  tournamentType?: 'round-robin' | 'rapid-swiss';
 }
 
 export interface Tiebreakers {
@@ -64,4 +65,59 @@ export interface EloCalculation {
   newLoserELO: number;
   winnerChange: number;
   loserChange: number;
+}
+
+// Swiss Tournament Types
+export type SwissPlayerStatus = 'waiting' | 'ready-to-pair' | 'playing' | 'finished';
+
+export interface SwissPlayer extends Player {
+  status: SwissPlayerStatus;
+  currentRound: number;
+  opponentHistory: number[]; // Array of opponent player IDs
+  roundsPlayed: number;
+  totalWins: number;
+  totalLosses: number;
+  pointsEarned: number; // Tournament points (3 for win, 1 for loss)
+  buchholzScore: number;
+  lastMatchTime?: Date;
+}
+
+export interface SwissMatch extends Match {
+  startTime?: Date;
+  estimatedDuration?: number; // in minutes
+  actualDuration?: number;
+  isCurrentlyPlaying: boolean;
+}
+
+export interface PairingScenario {
+  currentMatches: SwissMatch[];
+  possibleOutcomes: MatchOutcome[];
+  viablePairings: PairingSuggestion[];
+  probabilityOfSuccess: number;
+}
+
+export interface MatchOutcome {
+  matchId: number;
+  player1Wins: boolean;
+  probability: number;
+}
+
+export interface PairingSuggestion {
+  player1Id: number;
+  player2Id: number;
+  priority: number; // Higher = better pairing
+  pointsDifference: number;
+  eloBalance: number;
+  reason: string;
+}
+
+export interface SwissTournament extends Omit<Tournament, 'players' | 'matches'> {
+  tournamentType: 'rapid-swiss';
+  players: SwissPlayer[];
+  matches: SwissMatch[];
+  currentRound: number;
+  maxRounds: number;
+  pairingHistory: PairingSuggestion[][];
+  allowPointDifference: number; // How many points difference is acceptable for pairing
+  minimumPlayers: number;
 }
