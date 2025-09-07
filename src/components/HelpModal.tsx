@@ -69,7 +69,7 @@ const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
             <li><strong style={{ color: '#333' }}>Player Setup</strong>:
               <ul style={subListStyle}>
                 <li>Enter player names</li>
-                <li>Set starting ELO ratings - you can find official UK ratings at <a href="https://results.ukbgf.com/ratings" target="_blank" style={{ color: '#2196f3' }}>UKBGF Rating Database</a> (default: 1500 if not known)</li>
+                <li>Set starting ELO ratings - you can find official UK ratings at <a href="https://results.ukbgf.com/ratings" target="_blank" rel="noreferrer" style={{ color: '#2196f3' }}>UKBGF Rating Database</a> (default: 1500 if not known)</li>
                 <li>Add contact information (optional)</li>
               </ul>
             </li>
@@ -170,7 +170,7 @@ const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
           }}>
             <h3 style={{ color: '#1976d2', marginTop: '0', marginBottom: '10px', textAlign: 'left' }}>💡 Tips for Tournament Directors</h3>
             <ul style={{ ...listStyle, margin: '0' }}>
-              <li>Set appropriate ELO starting ratings - check the <a href="https://results.ukbgf.com/ratings" target="_blank" style={{ color: '#2196f3' }}>UKBGF Rating Database</a> for official UK player ratings</li>
+              <li>Set appropriate ELO starting ratings - check the <a href="https://results.ukbgf.com/ratings" target="_blank" rel="noreferrer" style={{ color: '#2196f3' }}>UKBGF Rating Database</a> for official UK player ratings</li>
               <li>Choose the ranking system that best fits your tournament format</li>
               <li>Regularly export tournament data as backup</li>
               <li>Monitor the Statistics tab to track progress</li>
