@@ -37,10 +37,10 @@ waitForPort = 5000
 outputType = "webview"
 
 [deployment]
-build = ["sh", "-c", "npm run build"]
-deploymentTarget = "static"
+build = ["npm", "run", "build"]
+deploymentTarget = "autoscale"
 publicDir = "build"
-run = ["sh", "-c", "npx serve -s build"]
+run = ["npx", "serve", "-s", "build", "-l", "5000"]
 
 [[deployment.rewrites]]
 from = "/*"
