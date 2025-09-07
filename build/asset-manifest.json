@@ -1,10 +1,10 @@
 {
   "files": {
-    "main.css": "/yourusername/backgammon-tournament-manager/static/css/main.0dc670df.css",
-    "main.js": "/yourusername/backgammon-tournament-manager/static/js/main.3ce80c07.js",
-    "index.html": "/yourusername/backgammon-tournament-manager/index.html",
-    "main.0dc670df.css.map": "/yourusername/backgammon-tournament-manager/static/css/main.0dc670df.css.map",
-    "main.3ce80c07.js.map": "/yourusername/backgammon-tournament-manager/static/js/main.3ce80c07.js.map"
+    "main.css": "./static/css/main.0dc670df.css",
+    "main.js": "./static/js/main.3ce80c07.js",
+    "index.html": "./index.html",
+    "main.0dc670df.css.map": "./static/css/main.0dc670df.css.map",
+    "main.3ce80c07.js.map": "./static/js/main.3ce80c07.js.map"
   },
   "entrypoints": [
     "static/css/main.0dc670df.css",

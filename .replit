@@ -40,7 +40,7 @@ outputType = "webview"
 build = ["npm", "run", "build"]
 deploymentTarget = "autoscale"
 publicDir = "build"
-run = ["npx", "serve", "-s", "build", "-l", "5000"]
+run = ["npx", "serve", "-s", "build"]
 
 [[deployment.rewrites]]
 from = "/*"

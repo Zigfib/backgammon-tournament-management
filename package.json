@@ -7,7 +7,7 @@
   "keywords": ["backgammon", "tournament", "elo", "react", "typescript", "round-robin"],
   "author": "Your Name",
   "license": "MIT",
-  "homepage": "https://github.com/yourusername/backgammon-tournament-manager",
+  "homepage": ".",
   "repository": {
     "type": "git",
     "url": "https://github.com/yourusername/backgammon-tournament-manager.git"
