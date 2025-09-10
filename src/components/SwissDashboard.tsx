@@ -105,8 +105,9 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({ tournament, setTourname
     }
   };
 
-  const currentMatches = tournament.matches.filter(m => m.isCurrentlyPlaying);
+  // Fixed: For Swiss tournaments, completed matches should not be considered as currently playing
   const completedMatches = tournament.matches.filter(m => m.completed);
+  const currentMatches = tournament.matches.filter(m => !m.completed && ('isCurrentlyPlaying' in m ? (m as any).isCurrentlyPlaying : false));
   
   // Update player statuses dynamically
   const playersWithStatus = tournament.players.map(player => ({
