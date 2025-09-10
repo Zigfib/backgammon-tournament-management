@@ -1,30 +1,40 @@
 
 import { Tournament } from '../types';
 
-export const saveTournament = (tournament: Tournament): void => {
+export const saveTournament = (tournament: Tournament, silent: boolean = false): void => {
   if (!tournament.players || tournament.players.length === 0) {
-    alert("No tournament to save yet!");
+    if (!silent) alert("No tournament to save yet!");
     return;
   }
   localStorage.setItem("backgammonTournament", JSON.stringify(tournament));
-  alert("✅ Tournament saved successfully!");
+  if (!silent) alert("✅ Tournament saved successfully!");
 };
 
-export const loadTournament = (): Tournament | null => {
+// Auto-save function for silent background saves
+export const autoSaveTournament = (tournament: Tournament): void => {
+  saveTournament(tournament, true);
+};
+
+export const loadTournament = (silent: boolean = false): Tournament | null => {
   const data = localStorage.getItem("backgammonTournament");
   if (!data) {
-    alert("⚠️ No saved tournament found.");
+    if (!silent) alert("⚠️ No saved tournament found.");
     return null;
   }
   
   try {
     const tournament = JSON.parse(data) as Tournament;
-    alert("📂 Tournament loaded!");
+    if (!silent) alert("📂 Tournament loaded!");
     return tournament;
   } catch (error) {
-    alert("⚠️ Error loading tournament data.");
+    if (!silent) alert("⚠️ Error loading tournament data.");
     return null;
   }
+};
+
+// Auto-load function for silent background loading
+export const autoLoadTournament = (): Tournament | null => {
+  return loadTournament(true);
 };
 
 export const exportTournament = (tournament: Tournament): void => {

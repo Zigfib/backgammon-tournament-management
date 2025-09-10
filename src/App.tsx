@@ -5,22 +5,45 @@ import Header from './components/Header';
 import TournamentSetup from './components/TournamentSetup';
 import PlayerSetup from './components/PlayerSetup';
 import MainContent from './components/MainContent';
+import { autoLoadTournament, autoSaveTournament } from './utils/storage';
 
 type AppState = 'setup' | 'playerSetup' | 'tournament';
 
 const App: React.FC = () => {
-  const [appState, setAppState] = useState<AppState>('setup');
-  const [tournament, setTournament] = useState<Tournament>({
-    name: '',
-    players: [],
-    numRounds: 2,
-    maxPoints: 11,
-    matches: [],
-    results: {},
-    rankingSystem: 'standard',
-    scoreEntryMode: 'player-entry',
-    isAdmin: false
+  const [appState, setAppState] = useState<AppState>(() => {
+    // Auto-detect app state based on loaded tournament
+    const savedTournament = autoLoadTournament();
+    if (savedTournament && savedTournament.players && savedTournament.players.length > 0) {
+      return 'tournament'; // Jump directly to tournament if we have saved data
+    }
+    return 'setup';
   });
+  const [tournament, setTournament] = useState<Tournament>(() => {
+    // Try to load saved tournament on app start
+    const savedTournament = autoLoadTournament();
+    if (savedTournament && savedTournament.players && savedTournament.players.length > 0) {
+      return savedTournament;
+    }
+    // Default tournament if no saved data
+    return {
+      name: '',
+      players: [],
+      numRounds: 2,
+      maxPoints: 11,
+      matches: [],
+      results: {},
+      rankingSystem: 'standard',
+      scoreEntryMode: 'player-entry',
+      isAdmin: false
+    };
+  });
+
+  // Auto-save tournament whenever it changes (but only if it has players)
+  useEffect(() => {
+    if (tournament.players && tournament.players.length > 0) {
+      autoSaveTournament(tournament);
+    }
+  }, [tournament]);
 
   const handleGoToPlayerSetup = (numPlayers: number) => {
     setAppState('playerSetup');
