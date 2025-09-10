@@ -18,8 +18,6 @@ interface SwissDashboardProps {
 const SwissDashboard: React.FC<SwissDashboardProps> = ({ tournament, setTournament }) => {
   const [pairingSuggestions, setPairingSuggestions] = useState<PairingSuggestion[]>([]);
   const [scenario, setScenario] = useState<PairingScenario | null>(null);
-  const [canProceed, setCanProceed] = useState(false);
-  const [message, setMessage] = useState('');
   const [autoRefresh, setAutoRefresh] = useState(true);
 
   // Update pairing suggestions when tournament changes
@@ -28,8 +26,6 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({ tournament, setTourname
       const result = initiatePairingProcess(tournament);
       setPairingSuggestions(result.suggestions);
       setScenario(result.scenario);
-      setCanProceed(result.canProceed);
-      setMessage(result.message);
     }
   }, [tournament, autoRefresh]);
 
@@ -95,8 +91,6 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({ tournament, setTourname
               const result = initiatePairingProcess(tournament);
               setPairingSuggestions(result.suggestions);
               setScenario(result.scenario);
-              setCanProceed(result.canProceed);
-              setMessage(result.message);
             }}
           >
             🔄 Refresh Pairings

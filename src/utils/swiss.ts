@@ -124,7 +124,17 @@ const findPairingsInGroup = (
   points: number
 ): PairingSuggestion[] => {
   const suggestions: PairingSuggestion[] = [];
-  const availablePlayers = [...players];
+  let availablePlayers = [...players];
+  
+  // Randomize player order for first round (when all have 0 points and no opponent history)
+  const isFirstRound = points === 0 && players.every(p => p.opponentHistory.length === 0);
+  if (isFirstRound) {
+    // Fisher-Yates shuffle algorithm
+    for (let i = availablePlayers.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [availablePlayers[i], availablePlayers[j]] = [availablePlayers[j], availablePlayers[i]];
+    }
+  }
   
   for (let i = 0; i < availablePlayers.length; i++) {
     for (let j = i + 1; j < availablePlayers.length; j++) {
@@ -139,7 +149,9 @@ const findPairingsInGroup = (
           priority: calculatePairingPriority(player1, player2, 0),
           pointsDifference: 0,
           eloBalance: Math.abs(player1.currentElo - player2.currentElo),
-          reason: `Same points (${points}) - Fresh matchup`
+          reason: isFirstRound 
+            ? `First round - Randomized pairing` 
+            : `Same points (${points}) - Fresh matchup`
         };
         suggestions.push(suggestion);
       }
