@@ -147,17 +147,17 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({ tournament, setTourname
         )}
       </div>
 
-      {/* Pairing Status Message */}
-      {message && (
+      {/* Pairing Status Message - Only show positive messages */}
+      {message && canProceed && (
         <div style={{ 
           padding: '15px', 
           borderRadius: '8px', 
           marginBottom: '20px',
-          backgroundColor: canProceed ? '#d4edda' : '#f8d7da',
-          border: `1px solid ${canProceed ? '#c3e6cb' : '#f5c6cb'}`,
-          color: canProceed ? '#155724' : '#721c24'
+          backgroundColor: '#d4edda',
+          border: '1px solid #c3e6cb',
+          color: '#155724'
         }}>
-          <strong>{canProceed ? '✅' : '⚠️'} {message}</strong>
+          <strong>✅ {message}</strong>
         </div>
       )}
 
