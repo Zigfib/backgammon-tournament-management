@@ -284,6 +284,16 @@ export const simulatePairingScenarios = (
 ): PairingScenario => {
   const currentMatches = tournament.matches.filter(m => m.isCurrentlyPlaying);
   
+  // If no current matches are playing, success rate should be 100% since proposed pairings are already valid
+  if (currentMatches.length === 0) {
+    return {
+      currentMatches: [],
+      possibleOutcomes: [],
+      viablePairings: proposedPairings,
+      probabilityOfSuccess: 1.0 // 100% success when no active matches to worry about
+    };
+  }
+  
   // Generate all possible outcomes for current matches
   const possibleOutcomes = generateMatchOutcomes(currentMatches);
   
@@ -306,8 +316,7 @@ export const simulatePairingScenarios = (
   });
   
   const successfulScenarios = viableScenarios.filter(s => s.viable);
-  // Handle edge case where no matches are playing (avoid NaN)
-  const probabilityOfSuccess = viableScenarios.length === 0 ? 1.0 : successfulScenarios.length / viableScenarios.length;
+  const probabilityOfSuccess = successfulScenarios.length / viableScenarios.length;
   
   return {
     currentMatches,

@@ -7,7 +7,8 @@ import {
 } from '../types';
 import { 
   initiatePairingProcess, 
-  getPlayerStatus 
+  getPlayerStatus,
+  implementPairing 
 } from '../utils/swiss';
 
 interface SwissDashboardProps {
@@ -244,10 +245,10 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({ tournament, setTourname
             </button>
           </div>
           
-          {/* Show all pairings */}
+          {/* Show all pairings with individual start buttons */}
           <div style={{ 
             display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', 
+            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', 
             gap: '10px' 
           }}>
             {pairingSuggestions.map((suggestion, index) => {
@@ -256,15 +257,38 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({ tournament, setTourname
               return (
                 <div key={`${suggestion.player1Id}-${suggestion.player2Id}`} style={{ 
                   background: '#f8fff9', 
-                  padding: '10px', 
+                  padding: '12px', 
                   borderRadius: '6px', 
                   border: '1px solid #c3e6cb',
-                  fontSize: '0.9em'
+                  fontSize: '0.9em',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px'
                 }}>
-                  <strong>{player1?.name}</strong> vs <strong>{player2?.name}</strong>
-                  <div style={{ fontSize: '0.8em', color: '#666', marginTop: '3px' }}>
-                    {suggestion.reason}
+                  <div>
+                    <strong>{player1?.name}</strong> vs <strong>{player2?.name}</strong>
+                    <div style={{ fontSize: '0.8em', color: '#666', marginTop: '3px' }}>
+                      {suggestion.reason}
+                    </div>
                   </div>
+                  <button 
+                    style={{ 
+                      backgroundColor: '#17a2b8', 
+                      color: 'white', 
+                      border: 'none',
+                      padding: '6px 12px',
+                      borderRadius: '4px',
+                      fontSize: '0.8em',
+                      cursor: 'pointer',
+                      alignSelf: 'flex-start'
+                    }}
+                    onClick={() => {
+                      const updatedTournament = implementPairing(tournament, suggestion);
+                      setTournament(updatedTournament);
+                    }}
+                  >
+                    ▶️ Start This Match
+                  </button>
                 </div>
               );
             })}
