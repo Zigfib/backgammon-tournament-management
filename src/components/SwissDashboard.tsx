@@ -137,10 +137,12 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({ tournament, setTourname
             borderRadius: '8px', 
             border: '1px solid #dee2e6' 
           }}>
-            <h4 style={{ margin: '0 0 10px 0', color: '#495057' }}>Future Viability</h4>
-            <p><strong>Success Rate:</strong> {Math.round(scenario.probabilityOfSuccess * 100)}%</p>
+            <h4 style={{ margin: '0 0 10px 0', color: '#495057' }}>Algorithm Validation</h4>
+            <p><strong>Success Rate:</strong> {Math.round(scenario.probabilityOfSuccess * 100)}% 
+              {scenario.probabilityOfSuccess === 1.0 && ' ✅'}
+            </p>
             <p><strong>Active Matches:</strong> {scenario.currentMatches.length}</p>
-            <p><strong>Scenarios Tested:</strong> {scenario.possibleOutcomes.length}</p>
+            <p><strong>Scenarios Tested:</strong> {scenario.possibleOutcomes.length || 'None (no active matches)'}</p>
           </div>
         )}
       </div>

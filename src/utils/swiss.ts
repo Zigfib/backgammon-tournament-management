@@ -253,7 +253,8 @@ export const simulatePairingScenarios = (
   });
   
   const successfulScenarios = viableScenarios.filter(s => s.viable);
-  const probabilityOfSuccess = successfulScenarios.length / viableScenarios.length;
+  // Handle edge case where no matches are playing (avoid NaN)
+  const probabilityOfSuccess = viableScenarios.length === 0 ? 1.0 : successfulScenarios.length / viableScenarios.length;
   
   return {
     currentMatches,
