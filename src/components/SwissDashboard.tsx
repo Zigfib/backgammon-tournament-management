@@ -69,6 +69,23 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({ tournament, setTourname
     status: getPlayerStatus(player, tournament)
   }));
 
+  // Determine if we're starting a new round or adding matches mid-round
+  const isNewRound = currentMatches.length === 0 && completedMatches.length > 0;
+  const isFirstRound = completedMatches.length === 0;
+  
+  const getButtonText = () => {
+    const matchCount = pairingSuggestions.length;
+    
+    if (isFirstRound) {
+      return `🚀 Start Tournament (${matchCount} match${matchCount > 1 ? 'es' : ''})`;
+    } else if (isNewRound) {
+      const nextRound = Math.max(...completedMatches.map(m => m.round)) + 1;
+      return `🚀 Start Round ${nextRound} (${matchCount} match${matchCount > 1 ? 'es' : ''})`;
+    } else {
+      return `▶️ Start Match${matchCount > 1 ? 'es' : ''} (${matchCount})`;
+    }
+  };
+
   const statusCounts = playersWithStatus.reduce((counts, player) => {
     counts[player.status] = (counts[player.status] || 0) + 1;
     return counts;
@@ -177,7 +194,7 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({ tournament, setTourname
               }}
               onClick={handleImplementAllPairings}
             >
-              🚀 Start Round ({pairingSuggestions.length} matches)
+              {getButtonText()}
             </button>
           </div>
           
