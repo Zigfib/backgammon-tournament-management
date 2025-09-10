@@ -33,9 +33,13 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({ tournament, setTourname
     }
   }, [tournament, autoRefresh]);
 
-  const handleImplementPairing = (suggestion: PairingSuggestion) => {
-    const updatedTournament = implementPairing(tournament, suggestion);
-    setTournament(updatedTournament);
+  const handleAutoImplementBestPairing = () => {
+    if (pairingSuggestions.length > 0) {
+      // Choose the highest priority pairing (first in sorted array)
+      const bestPairing = pairingSuggestions[0];
+      const updatedTournament = implementPairing(tournament, bestPairing);
+      setTournament(updatedTournament);
+    }
   };
 
   const getStatusColor = (status: string): string => {
@@ -147,17 +151,45 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({ tournament, setTourname
         )}
       </div>
 
-      {/* Pairing Status Message - Only show positive messages */}
-      {message && canProceed && (
+      {/* Auto-pairing Section */}
+      {pairingSuggestions.length > 0 && (
         <div style={{ 
-          padding: '15px', 
+          padding: '20px', 
           borderRadius: '8px', 
-          marginBottom: '20px',
+          marginBottom: '30px',
           backgroundColor: '#d4edda',
           border: '1px solid #c3e6cb',
-          color: '#155724'
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
         }}>
-          <strong>✅ {message}</strong>
+          <div>
+            <h4 style={{ margin: '0 0 5px 0', color: '#155724' }}>Ready to Pair</h4>
+            <p style={{ margin: '0', color: '#155724' }}>
+              Best pairing available: <strong>
+                {tournament.players.find(p => p.id === pairingSuggestions[0].player1Id)?.name}
+              </strong> vs <strong>
+                {tournament.players.find(p => p.id === pairingSuggestions[0].player2Id)?.name}
+              </strong>
+            </p>
+            <p style={{ margin: '5px 0 0 0', fontSize: '0.9em', color: '#666' }}>
+              {pairingSuggestions[0].reason}
+            </p>
+          </div>
+          <button 
+            className="btn"
+            style={{ 
+              backgroundColor: '#28a745', 
+              color: 'white', 
+              border: 'none',
+              padding: '12px 20px',
+              fontSize: '1em',
+              fontWeight: 'bold'
+            }}
+            onClick={handleAutoImplementBestPairing}
+          >
+            🎯 Start Match
+          </button>
         </div>
       )}
 
@@ -192,62 +224,6 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({ tournament, setTourname
         </div>
       )}
 
-      {/* Pairing Suggestions */}
-      {pairingSuggestions.length > 0 && (
-        <div style={{ marginBottom: '30px' }}>
-          <h3>🟢 Suggested Pairings</h3>
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', 
-            gap: '15px' 
-          }}>
-            {pairingSuggestions.slice(0, 6).map((suggestion, index) => {
-              const player1 = tournament.players.find(p => p.id === suggestion.player1Id);
-              const player2 = tournament.players.find(p => p.id === suggestion.player2Id);
-              return (
-                <div key={`${suggestion.player1Id}-${suggestion.player2Id}`} style={{ 
-                  background: '#d4edda', 
-                  padding: '15px', 
-                  borderRadius: '8px', 
-                  border: '1px solid #c3e6cb' 
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div style={{ flex: 1 }}>
-                      <h4 style={{ margin: '0 0 10px 0', color: '#155724' }}>
-                        Priority: {suggestion.priority.toFixed(1)}
-                      </h4>
-                      <p><strong>{player1?.name}</strong> vs <strong>{player2?.name}</strong></p>
-                      <p style={{ fontSize: '0.9em', margin: '5px 0' }}>
-                        Points: {player1?.pointsEarned} vs {player2?.pointsEarned} 
-                        {suggestion.pointsDifference > 0 && ` (diff: ${suggestion.pointsDifference})`}
-                      </p>
-                      <p style={{ fontSize: '0.9em', margin: '5px 0' }}>
-                        ELO: {player1?.currentElo} vs {player2?.currentElo}
-                      </p>
-                      <p style={{ fontSize: '0.8em', color: '#666', fontStyle: 'italic' }}>
-                        {suggestion.reason}
-                      </p>
-                    </div>
-                    <button 
-                      className="btn"
-                      style={{ 
-                        backgroundColor: '#28a745', 
-                        color: 'white', 
-                        border: 'none',
-                        padding: '8px 12px',
-                        fontSize: '0.9em'
-                      }}
-                      onClick={() => handleImplementPairing(suggestion)}
-                    >
-                      ▶️ Pair
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
 
       {/* Player Status Grid */}
       <div>
