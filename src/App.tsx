@@ -45,6 +45,29 @@ const App: React.FC = () => {
     }
   }, [tournament]);
 
+  // One-time migration to fix existing completed matches
+  useEffect(() => {
+    if (tournament.matches && tournament.matches.length > 0) {
+      const needsMigration = tournament.matches.some(match => 
+        match.completed && 'isCurrentlyPlaying' in match && (match as any).isCurrentlyPlaying === true
+      );
+      
+      if (needsMigration) {
+        console.log('Migrating tournament data to fix match states...');
+        const migratedTournament = {
+          ...tournament,
+          matches: tournament.matches.map(match => {
+            if (match.completed && 'isCurrentlyPlaying' in match) {
+              return { ...match, isCurrentlyPlaying: false };
+            }
+            return match;
+          })
+        };
+        setTournament(migratedTournament);
+      }
+    }
+  }, []); // Only run once on mount
+
   const handleGoToPlayerSetup = (numPlayers: number) => {
     setAppState('playerSetup');
   };
