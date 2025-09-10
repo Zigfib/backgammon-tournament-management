@@ -108,20 +108,36 @@ const TournamentSetup: React.FC<TournamentSetupProps> = ({
           </select>
         </div>
         
-        {(tournament.tournamentType || 'round-robin') === 'round-robin' && (
-          <div className="input-group">
-            <label htmlFor="numRounds">Rounds per Matchup</label>
-            <select 
-              id="numRounds" 
-              value={tournament.numRounds}
-              onChange={(e) => handleInputChange('numRounds', parseInt(e.target.value))}
-            >
-              <option value="1">1 Round</option>
-              <option value="2">2 Rounds</option>
-              <option value="3">3 Rounds</option>
-            </select>
-          </div>
-        )}
+        <div className="input-group">
+          <label htmlFor="numRounds">
+            {(tournament.tournamentType || 'round-robin') === 'round-robin' 
+              ? 'Rounds per Matchup' 
+              : 'Number of Rounds'}
+          </label>
+          <select 
+            id="numRounds" 
+            value={tournament.numRounds}
+            onChange={(e) => handleInputChange('numRounds', parseInt(e.target.value))}
+          >
+            {(tournament.tournamentType || 'round-robin') === 'round-robin' ? (
+              <>
+                <option value="1">1 Round</option>
+                <option value="2">2 Rounds</option>
+                <option value="3">3 Rounds</option>
+              </>
+            ) : (
+              <>
+                <option value="3">3 Rounds</option>
+                <option value="4">4 Rounds</option>
+                <option value="5">5 Rounds</option>
+                <option value="6">6 Rounds</option>
+                <option value="7">7 Rounds</option>
+                <option value="8">8 Rounds</option>
+                <option value="9">9 Rounds</option>
+              </>
+            )}
+          </select>
+        </div>
         
         
       </div>
