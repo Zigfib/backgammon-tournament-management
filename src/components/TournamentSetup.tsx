@@ -31,6 +31,18 @@ const TournamentSetup: React.FC<TournamentSetupProps> = ({
       <h2>Tournament Setup</h2>
       <div className="setup-grid">
         <div className="input-group">
+          <label htmlFor="tournamentType">Tournament Format</label>
+          <select 
+            id="tournamentType" 
+            value={tournament.tournamentType || 'round-robin'}
+            onChange={(e) => handleInputChange('tournamentType', e.target.value as 'round-robin' | 'rapid-swiss')}
+          >
+            <option value="round-robin">Round-Robin (Everyone plays everyone)</option>
+            <option value="rapid-swiss">Rapid Swiss (Real-time pairing as matches finish)</option>
+          </select>
+        </div>
+        
+        <div className="input-group">
           <label htmlFor="tournamentName">Tournament Name</label>
           <input 
             type="text" 
@@ -73,19 +85,6 @@ const TournamentSetup: React.FC<TournamentSetupProps> = ({
         </div>
         
         <div className="input-group">
-          <label htmlFor="numRounds">Rounds per Matchup</label>
-          <select 
-            id="numRounds" 
-            value={tournament.numRounds}
-            onChange={(e) => handleInputChange('numRounds', parseInt(e.target.value))}
-          >
-            <option value="1">1 Round</option>
-            <option value="2">2 Rounds</option>
-            <option value="3">3 Rounds</option>
-          </select>
-        </div>
-        
-        <div className="input-group">
           <label htmlFor="maxPoints">Match To</label>
           <input 
             type="number" 
@@ -95,18 +94,6 @@ const TournamentSetup: React.FC<TournamentSetupProps> = ({
             max="25"
             onChange={(e) => handleInputChange('maxPoints', parseInt(e.target.value))}
           />
-        </div>
-        
-        <div className="input-group">
-          <label htmlFor="tournamentType">Tournament Format</label>
-          <select 
-            id="tournamentType" 
-            value={tournament.tournamentType || 'round-robin'}
-            onChange={(e) => handleInputChange('tournamentType', e.target.value as 'round-robin' | 'rapid-swiss')}
-          >
-            <option value="round-robin">Round-Robin (Everyone plays everyone)</option>
-            <option value="rapid-swiss">Rapid Swiss (Real-time pairing as matches finish)</option>
-          </select>
         </div>
         
         <div className="input-group">
@@ -120,6 +107,21 @@ const TournamentSetup: React.FC<TournamentSetupProps> = ({
             <option value="hybrid">Hybrid - Top by points, lower by ELO improvement</option>
           </select>
         </div>
+        
+        {(tournament.tournamentType || 'round-robin') === 'round-robin' && (
+          <div className="input-group">
+            <label htmlFor="numRounds">Rounds per Matchup</label>
+            <select 
+              id="numRounds" 
+              value={tournament.numRounds}
+              onChange={(e) => handleInputChange('numRounds', parseInt(e.target.value))}
+            >
+              <option value="1">1 Round</option>
+              <option value="2">2 Rounds</option>
+              <option value="3">3 Rounds</option>
+            </select>
+          </div>
+        )}
         
         
       </div>
