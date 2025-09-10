@@ -56,6 +56,9 @@ export const updateMatchResult = (tournament: Tournament, matchId: number, playe
   const match = tournament.matches.find(m => m.id === matchId);
   if (!match) return tournament;
   
+  // Check if this is a Swiss tournament
+  const isSwissTournament = tournament.tournamentType === 'rapid-swiss';
+  
   // Store previous ELO values for potential rollback
   const prevPlayer1ELO = tournament.players[match.player1].currentElo;
   const prevPlayer2ELO = tournament.players[match.player2].currentElo;
@@ -108,6 +111,33 @@ export const updateMatchResult = (tournament: Tournament, matchId: number, playe
     } else {
       updatedPlayers[match.player1].currentElo = eloResult.newLoserELO;
       updatedPlayers[match.player2].currentElo = eloResult.newWinnerELO;
+    }
+    
+    // For Swiss tournaments, update Swiss-specific fields
+    if (isSwissTournament) {
+      const swissPlayer1 = updatedPlayers[match.player1] as any;
+      const swissPlayer2 = updatedPlayers[match.player2] as any;
+      
+      // Update rounds played
+      swissPlayer1.roundsPlayed = (swissPlayer1.roundsPlayed || 0) + 1;
+      swissPlayer2.roundsPlayed = (swissPlayer2.roundsPlayed || 0) + 1;
+      
+      // Update wins/losses and points earned
+      if (isPlayer1Winner) {
+        swissPlayer1.totalWins = (swissPlayer1.totalWins || 0) + 1;
+        swissPlayer1.pointsEarned = (swissPlayer1.pointsEarned || 0) + 3;
+        swissPlayer2.totalLosses = (swissPlayer2.totalLosses || 0) + 1;
+        swissPlayer2.pointsEarned = (swissPlayer2.pointsEarned || 0) + 1;
+      } else {
+        swissPlayer1.totalLosses = (swissPlayer1.totalLosses || 0) + 1;
+        swissPlayer1.pointsEarned = (swissPlayer1.pointsEarned || 0) + 1;
+        swissPlayer2.totalWins = (swissPlayer2.totalWins || 0) + 1;
+        swissPlayer2.pointsEarned = (swissPlayer2.pointsEarned || 0) + 3;
+      }
+      
+      // Update status to ready-to-pair
+      swissPlayer1.status = 'ready-to-pair';
+      swissPlayer2.status = 'ready-to-pair';
     }
     
     // Store result with ELO changes
