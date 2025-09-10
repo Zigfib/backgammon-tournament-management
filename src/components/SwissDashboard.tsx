@@ -2,11 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { 
   SwissTournament, 
   PairingSuggestion, 
-  PairingScenario 
+  PairingScenario,
+  SwissPlayerStatus 
 } from '../types';
 import { 
   initiatePairingProcess, 
-  implementPairing, 
   getPlayerStatus 
 } from '../utils/swiss';
 
@@ -31,11 +31,56 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({ tournament, setTourname
 
   const handleImplementAllPairings = () => {
     if (pairingSuggestions.length > 0) {
-      // Implement ALL pairing suggestions to create complete round
-      let updatedTournament = tournament;
-      for (const pairing of pairingSuggestions) {
-        updatedTournament = implementPairing(updatedTournament, pairing);
-      }
+      // Implement ALL pairing suggestions in the SAME round
+      let updatedTournament = { ...tournament };
+      const currentRound = Math.max(...tournament.matches.map(m => m.round), 0) + 1;
+      
+      // Create all matches with the same round number
+      const newMatches = pairingSuggestions.map((suggestion, index) => {
+        const newMatchId = Math.max(...updatedTournament.matches.map(m => m.id), -1) + index + 1;
+        
+        return {
+          id: newMatchId,
+          player1: suggestion.player1Id,
+          player2: suggestion.player2Id,
+          round: currentRound,
+          player1Score: null,
+          player2Score: null,
+          completed: false,
+          isCurrentlyPlaying: true,
+          startTime: new Date(),
+          estimatedDuration: 45
+        };
+      });
+      
+      // Update all players at once
+      const pairedPlayerIds = new Set(pairingSuggestions.flatMap(s => [s.player1Id, s.player2Id]));
+      const updatedPlayers = updatedTournament.players.map(player => {
+        if (pairedPlayerIds.has(player.id)) {
+          const suggestion = pairingSuggestions.find(s => 
+            s.player1Id === player.id || s.player2Id === player.id
+          );
+          const opponentId = suggestion?.player1Id === player.id 
+            ? suggestion.player2Id 
+            : suggestion?.player1Id;
+            
+          return {
+            ...player,
+            status: 'playing' as SwissPlayerStatus,
+            currentRound: currentRound,
+            opponentHistory: [...player.opponentHistory, ...(opponentId !== undefined ? [opponentId] : [])]
+          };
+        }
+        return player;
+      });
+      
+      updatedTournament = {
+        ...updatedTournament,
+        players: updatedPlayers,
+        matches: [...updatedTournament.matches, ...newMatches],
+        currentRound: currentRound
+      };
+      
       setTournament(updatedTournament);
     }
   };
@@ -131,7 +176,7 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({ tournament, setTourname
           border: '1px solid #dee2e6' 
         }}>
           <h4 style={{ margin: '0 0 10px 0', color: '#495057' }}>Tournament Progress</h4>
-          <p><strong>Round:</strong> {tournament.currentRound} / {tournament.maxRounds}</p>
+          <p><strong>Round:</strong> {Math.max(...tournament.matches.map(m => m.round), 0) || 1} / {tournament.maxRounds}</p>
           <p><strong>Matches:</strong> {completedMatches.length} completed, {currentMatches.length} playing</p>
         </div>
 
