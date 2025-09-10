@@ -115,8 +115,32 @@ export const updateMatchResult = (tournament: Tournament, matchId: number, playe
     
     // For Swiss tournaments, update Swiss-specific fields
     if (isSwissTournament) {
+      console.log('Updating Swiss tournament match completion...', {
+        matchId,
+        player1Id: match.player1,
+        player2Id: match.player2,
+        isPlayer1Winner,
+        player1Score: updatedMatch.player1Score,
+        player2Score: updatedMatch.player2Score
+      });
+      
       const swissPlayer1 = updatedPlayers[match.player1] as any;
       const swissPlayer2 = updatedPlayers[match.player2] as any;
+      
+      console.log('Before update:', {
+        player1: { 
+          id: swissPlayer1.id, 
+          roundsPlayed: swissPlayer1.roundsPlayed, 
+          pointsEarned: swissPlayer1.pointsEarned,
+          status: swissPlayer1.status 
+        },
+        player2: { 
+          id: swissPlayer2.id, 
+          roundsPlayed: swissPlayer2.roundsPlayed, 
+          pointsEarned: swissPlayer2.pointsEarned,
+          status: swissPlayer2.status 
+        }
+      });
       
       // Update rounds played
       swissPlayer1.roundsPlayed = (swissPlayer1.roundsPlayed || 0) + 1;
@@ -138,6 +162,21 @@ export const updateMatchResult = (tournament: Tournament, matchId: number, playe
       // Update status to ready-to-pair
       swissPlayer1.status = 'ready-to-pair';
       swissPlayer2.status = 'ready-to-pair';
+      
+      console.log('After update:', {
+        player1: { 
+          id: swissPlayer1.id, 
+          roundsPlayed: swissPlayer1.roundsPlayed, 
+          pointsEarned: swissPlayer1.pointsEarned,
+          status: swissPlayer1.status 
+        },
+        player2: { 
+          id: swissPlayer2.id, 
+          roundsPlayed: swissPlayer2.roundsPlayed, 
+          pointsEarned: swissPlayer2.pointsEarned,
+          status: swissPlayer2.status 
+        }
+      });
     }
     
     // Store result with ELO changes
