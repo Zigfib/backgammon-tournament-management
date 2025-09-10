@@ -29,8 +29,17 @@ const TournamentTable: React.FC<TournamentTableProps> = ({ tournament }) => {
       case 'pointsPercent':
         return player.matches > 0 ? Math.round((player.points / (player.matches * 3)) * 100) + '%' : '0%';
       case 'remainingMatches':
-        const totalMatches = (tournament.players.length - 1) * tournament.numRounds;
-        return totalMatches - player.matches;
+        // Different calculation for Swiss vs Round-Robin tournaments
+        const isSwissTournament = tournament.tournamentType === 'rapid-swiss';
+        const totalMatches = isSwissTournament 
+          ? (tournament as any).maxRounds || tournament.numRounds  // Swiss: each player plays maxRounds matches
+          : (tournament.players.length - 1) * tournament.numRounds; // Round-Robin: against all players each round
+        
+        const playerMatches = isSwissTournament 
+          ? ((player as any).roundsPlayed || 0)  // For Swiss, use roundsPlayed
+          : player.matches;  // For Round-Robin, use matches
+        
+        return Math.max(0, totalMatches - playerMatches);
       default:
         return player[key] || 0;
     }
