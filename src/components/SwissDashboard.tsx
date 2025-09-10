@@ -29,11 +29,13 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({ tournament, setTourname
     }
   }, [tournament, autoRefresh]);
 
-  const handleAutoImplementBestPairing = () => {
+  const handleImplementAllPairings = () => {
     if (pairingSuggestions.length > 0) {
-      // Choose the highest priority pairing (first in sorted array)
-      const bestPairing = pairingSuggestions[0];
-      const updatedTournament = implementPairing(tournament, bestPairing);
+      // Implement ALL pairing suggestions to create complete round
+      let updatedTournament = tournament;
+      for (const pairing of pairingSuggestions) {
+        updatedTournament = implementPairing(updatedTournament, pairing);
+      }
       setTournament(updatedTournament);
     }
   };
@@ -147,45 +149,63 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({ tournament, setTourname
         )}
       </div>
 
-      {/* Auto-pairing Section */}
+      {/* Round Pairing Section */}
       {pairingSuggestions.length > 0 && (
         <div style={{ 
           padding: '20px', 
           borderRadius: '8px', 
           marginBottom: '30px',
           backgroundColor: '#d4edda',
-          border: '1px solid #c3e6cb',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
+          border: '1px solid #c3e6cb'
         }}>
-          <div>
-            <h4 style={{ margin: '0 0 5px 0', color: '#155724' }}>Ready to Pair</h4>
-            <p style={{ margin: '0', color: '#155724' }}>
-              Best pairing available: <strong>
-                {tournament.players.find(p => p.id === pairingSuggestions[0].player1Id)?.name}
-              </strong> vs <strong>
-                {tournament.players.find(p => p.id === pairingSuggestions[0].player2Id)?.name}
-              </strong>
-            </p>
-            <p style={{ margin: '5px 0 0 0', fontSize: '0.9em', color: '#666' }}>
-              {pairingSuggestions[0].reason}
-            </p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+            <div>
+              <h4 style={{ margin: '0 0 5px 0', color: '#155724' }}>Complete Round Ready</h4>
+              <p style={{ margin: '0', color: '#155724' }}>
+                {pairingSuggestions.length} pairing{pairingSuggestions.length > 1 ? 's' : ''} available for this round
+              </p>
+            </div>
+            <button 
+              className="btn"
+              style={{ 
+                backgroundColor: '#28a745', 
+                color: 'white', 
+                border: 'none',
+                padding: '12px 20px',
+                fontSize: '1em',
+                fontWeight: 'bold'
+              }}
+              onClick={handleImplementAllPairings}
+            >
+              🚀 Start Round ({pairingSuggestions.length} matches)
+            </button>
           </div>
-          <button 
-            className="btn"
-            style={{ 
-              backgroundColor: '#28a745', 
-              color: 'white', 
-              border: 'none',
-              padding: '12px 20px',
-              fontSize: '1em',
-              fontWeight: 'bold'
-            }}
-            onClick={handleAutoImplementBestPairing}
-          >
-            🎯 Start Match
-          </button>
+          
+          {/* Show all pairings */}
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', 
+            gap: '10px' 
+          }}>
+            {pairingSuggestions.map((suggestion, index) => {
+              const player1 = tournament.players.find(p => p.id === suggestion.player1Id);
+              const player2 = tournament.players.find(p => p.id === suggestion.player2Id);
+              return (
+                <div key={`${suggestion.player1Id}-${suggestion.player2Id}`} style={{ 
+                  background: '#f8fff9', 
+                  padding: '10px', 
+                  borderRadius: '6px', 
+                  border: '1px solid #c3e6cb',
+                  fontSize: '0.9em'
+                }}>
+                  <strong>{player1?.name}</strong> vs <strong>{player2?.name}</strong>
+                  <div style={{ fontSize: '0.8em', color: '#666', marginTop: '3px' }}>
+                    {suggestion.reason}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 

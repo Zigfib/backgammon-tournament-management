@@ -80,31 +80,163 @@ export const findLegalPairings = (
   tournament: SwissTournament
 ): PairingSuggestion[] => {
   const readyPlayers = tournament.players.filter(p => p.status === 'ready-to-pair');
-  const suggestions: PairingSuggestion[] = [];
   
-  // Group players by points earned (tournament points, not game points)
+  if (readyPlayers.length < 2) return [];
+  
+  // Find optimal pairing combination for ALL ready players
+  return findOptimalPairingCombination(readyPlayers, tournament);
+};
+
+// Find the best combination of pairings that covers all ready players
+const findOptimalPairingCombination = (
+  readyPlayers: SwissPlayer[],
+  tournament: SwissTournament
+): PairingSuggestion[] => {
   const playersByPoints = groupPlayersByPoints(readyPlayers);
+  const finalPairings: PairingSuggestion[] = [];
+  let remainingPlayers = [...readyPlayers];
   
-  // Find pairings within same point group first
-  Object.entries(playersByPoints).forEach(([points, players]) => {
-    const pointValue = parseInt(points);
-    if (players.length >= 2) {
-      const pairings = findPairingsInGroup(players, tournament, pointValue);
-      suggestions.push(...pairings);
-    }
-  });
+  // First, pair players within same point groups
+  Object.entries(playersByPoints)
+    .sort(([a], [b]) => parseInt(b) - parseInt(a)) // Start with highest points
+    .forEach(([points, players]) => {
+      const pointValue = parseInt(points);
+      const availablePlayers = players.filter(p => 
+        remainingPlayers.some(rp => rp.id === p.id)
+      );
+      
+      if (availablePlayers.length >= 2) {
+        const pairings = findOptimalPairingWithinGroup(availablePlayers, tournament, pointValue);
+        finalPairings.push(...pairings);
+        
+        // Remove paired players from remaining list
+        const pairedPlayerIds = new Set(pairings.flatMap(p => [p.player1Id, p.player2Id]));
+        remainingPlayers = remainingPlayers.filter(p => !pairedPlayerIds.has(p.id));
+      }
+    });
   
-  // If we can't pair everyone within same points, try allowing point differences
-  if (suggestions.length * 2 < readyPlayers.length) {
-    const crossPointPairings = findCrossPointPairings(
-      readyPlayers, 
-      tournament, 
-      suggestions
-    );
-    suggestions.push(...crossPointPairings);
+  // Handle any remaining players with cross-point pairings
+  if (remainingPlayers.length >= 2) {
+    const crossPointPairings = findOptimalCrossPointPairings(remainingPlayers, tournament);
+    finalPairings.push(...crossPointPairings);
   }
   
-  return suggestions.sort((a, b) => b.priority - a.priority);
+  return finalPairings.sort((a, b) => b.priority - a.priority);
+};
+
+// Create optimal pairings within a point group (greedy approach)
+const findOptimalPairingWithinGroup = (
+  players: SwissPlayer[],
+  tournament: SwissTournament,
+  points: number
+): PairingSuggestion[] => {
+  let availablePlayers = [...players];
+  const suggestions: PairingSuggestion[] = [];
+  
+  // Randomize for first round
+  const isFirstRound = points === 0 && players.every(p => p.opponentHistory.length === 0);
+  if (isFirstRound) {
+    // Fisher-Yates shuffle
+    for (let i = availablePlayers.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [availablePlayers[i], availablePlayers[j]] = [availablePlayers[j], availablePlayers[i]];
+    }
+  }
+  
+  // Greedily pair players
+  while (availablePlayers.length >= 2) {
+    const player1 = availablePlayers[0];
+    let bestMatch = null;
+    let bestMatchIndex = -1;
+    let bestPriority = -1;
+    
+    // Find the best opponent for player1
+    for (let i = 1; i < availablePlayers.length; i++) {
+      const player2 = availablePlayers[i];
+      
+      if (!havePlayedBefore(player1, player2)) {
+        const priority = calculatePairingPriority(player1, player2, 0);
+        if (priority > bestPriority) {
+          bestMatch = player2;
+          bestMatchIndex = i;
+          bestPriority = priority;
+        }
+      }
+    }
+    
+    if (bestMatch) {
+      suggestions.push({
+        player1Id: player1.id,
+        player2Id: bestMatch.id,
+        priority: bestPriority,
+        pointsDifference: 0,
+        eloBalance: Math.abs(player1.currentElo - bestMatch.currentElo),
+        reason: isFirstRound 
+          ? `First round - Randomized pairing` 
+          : `Same points (${points}) - Fresh matchup`
+      });
+      
+      // Remove both players from available list
+      availablePlayers = availablePlayers.filter((p, index) => 
+        index !== 0 && index !== bestMatchIndex
+      );
+    } else {
+      // No valid pairing found, remove player1 and try next
+      availablePlayers.shift();
+    }
+  }
+  
+  return suggestions;
+};
+
+// Handle cross-point pairings for remaining players
+const findOptimalCrossPointPairings = (
+  remainingPlayers: SwissPlayer[],
+  tournament: SwissTournament
+): PairingSuggestion[] => {
+  const suggestions: PairingSuggestion[] = [];
+  let availablePlayers = [...remainingPlayers];
+  
+  while (availablePlayers.length >= 2) {
+    const player1 = availablePlayers[0];
+    let bestMatch = null;
+    let bestMatchIndex = -1;
+    let bestPriority = -1;
+    
+    for (let i = 1; i < availablePlayers.length; i++) {
+      const player2 = availablePlayers[i];
+      const pointsDiff = Math.abs(player1.pointsEarned - player2.pointsEarned);
+      
+      if (pointsDiff <= tournament.allowPointDifference && !havePlayedBefore(player1, player2)) {
+        const priority = calculatePairingPriority(player1, player2, pointsDiff);
+        if (priority > bestPriority) {
+          bestMatch = player2;
+          bestMatchIndex = i;
+          bestPriority = priority;
+        }
+      }
+    }
+    
+    if (bestMatch) {
+      const pointsDiff = Math.abs(player1.pointsEarned - bestMatch.pointsEarned);
+      suggestions.push({
+        player1Id: player1.id,
+        player2Id: bestMatch.id,
+        priority: bestPriority,
+        pointsDifference: pointsDiff,
+        eloBalance: Math.abs(player1.currentElo - bestMatch.currentElo),
+        reason: `Point difference: ${pointsDiff} - Acceptable range`
+      });
+      
+      availablePlayers = availablePlayers.filter((p, index) => 
+        index !== 0 && index !== bestMatchIndex
+      );
+    } else {
+      availablePlayers.shift();
+    }
+  }
+  
+  return suggestions;
 };
 
 const groupPlayersByPoints = (players: SwissPlayer[]): Record<number, SwissPlayer[]> => {
@@ -118,85 +250,6 @@ const groupPlayersByPoints = (players: SwissPlayer[]): Record<number, SwissPlaye
   }, {} as Record<number, SwissPlayer[]>);
 };
 
-const findPairingsInGroup = (
-  players: SwissPlayer[], 
-  tournament: SwissTournament,
-  points: number
-): PairingSuggestion[] => {
-  const suggestions: PairingSuggestion[] = [];
-  let availablePlayers = [...players];
-  
-  // Randomize player order for first round (when all have 0 points and no opponent history)
-  const isFirstRound = points === 0 && players.every(p => p.opponentHistory.length === 0);
-  if (isFirstRound) {
-    // Fisher-Yates shuffle algorithm
-    for (let i = availablePlayers.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [availablePlayers[i], availablePlayers[j]] = [availablePlayers[j], availablePlayers[i]];
-    }
-  }
-  
-  for (let i = 0; i < availablePlayers.length; i++) {
-    for (let j = i + 1; j < availablePlayers.length; j++) {
-      const player1 = availablePlayers[i];
-      const player2 = availablePlayers[j];
-      
-      // Check if they haven't played before
-      if (!havePlayedBefore(player1, player2)) {
-        const suggestion: PairingSuggestion = {
-          player1Id: player1.id,
-          player2Id: player2.id,
-          priority: calculatePairingPriority(player1, player2, 0),
-          pointsDifference: 0,
-          eloBalance: Math.abs(player1.currentElo - player2.currentElo),
-          reason: isFirstRound 
-            ? `First round - Randomized pairing` 
-            : `Same points (${points}) - Fresh matchup`
-        };
-        suggestions.push(suggestion);
-      }
-    }
-  }
-  
-  return suggestions;
-};
-
-const findCrossPointPairings = (
-  allPlayers: SwissPlayer[],
-  tournament: SwissTournament,
-  existingSuggestions: PairingSuggestion[]
-): PairingSuggestion[] => {
-  const suggestions: PairingSuggestion[] = [];
-  const pairedPlayerIds = new Set([
-    ...existingSuggestions.flatMap(s => [s.player1Id, s.player2Id])
-  ]);
-  
-  const availablePlayers = allPlayers.filter(p => !pairedPlayerIds.has(p.id));
-  
-  for (let i = 0; i < availablePlayers.length; i++) {
-    for (let j = i + 1; j < availablePlayers.length; j++) {
-      const player1 = availablePlayers[i];
-      const player2 = availablePlayers[j];
-      
-      const pointsDiff = Math.abs(player1.pointsEarned - player2.pointsEarned);
-      
-      // Only allow pairings within the configured point difference
-      if (pointsDiff <= tournament.allowPointDifference && !havePlayedBefore(player1, player2)) {
-        const suggestion: PairingSuggestion = {
-          player1Id: player1.id,
-          player2Id: player2.id,
-          priority: calculatePairingPriority(player1, player2, pointsDiff),
-          pointsDifference: pointsDiff,
-          eloBalance: Math.abs(player1.currentElo - player2.currentElo),
-          reason: `Point difference: ${pointsDiff} - Acceptable range`
-        };
-        suggestions.push(suggestion);
-      }
-    }
-  }
-  
-  return suggestions;
-};
 
 const havePlayedBefore = (player1: SwissPlayer, player2: SwissPlayer): boolean => {
   return player1.opponentHistory.includes(player2.id) || 
