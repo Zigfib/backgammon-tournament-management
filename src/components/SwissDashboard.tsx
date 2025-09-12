@@ -189,8 +189,24 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({ tournament, setTourname
         }}>
           <h4 style={{ margin: '0 0 10px 0', color: '#495057' }}>Tournament Progress</h4>
           <p><strong>Round:</strong> {getCurrentRound(tournament)} / {tournament.maxRounds} 
-            {getCurrentRound(tournament) === tournament.maxRounds ? ' 🏁 FINAL ROUND' : ''}
-            {getCurrentRound(tournament) > tournament.maxRounds ? ' ✅ TOURNAMENT COMPLETE' : ''}
+            {(() => {
+              const currentRound = getCurrentRound(tournament);
+              const activeRounds = Array.from(new Set(tournament.matches
+                .filter(m => m.isCurrentlyPlaying)
+                .map(m => m.round)));
+              
+              console.log(`Display logic debug: currentRound=${currentRound}, maxRounds=${tournament.maxRounds}, activeRounds=[${activeRounds.join(',')}]`);
+              
+              // Only show FINAL ROUND if we're actually in the final round and it's the only active round
+              if (currentRound === tournament.maxRounds && activeRounds.length <= 1) {
+                return ' 🏁 FINAL ROUND';
+              } else if (currentRound > tournament.maxRounds) {
+                return ' ✅ TOURNAMENT COMPLETE';
+              } else if (activeRounds.length > 1) {
+                return ` (${activeRounds.length} rounds active)`;
+              }
+              return '';
+            })()}
           </p>
           <p><strong>Matches:</strong> {completedMatches.length} completed, {currentMatches.length} playing</p>
         </div>

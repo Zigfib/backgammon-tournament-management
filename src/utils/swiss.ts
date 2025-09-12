@@ -30,6 +30,10 @@ export const updatePlayerStatus = (
 export const getCurrentRound = (tournament: SwissTournament): number => {
   // Find the highest round number being played
   const playingMatches = tournament.matches.filter(m => m.isCurrentlyPlaying);
+  
+  // Debug logging for getCurrentRound
+  console.log(`getCurrentRound debug: playingMatches=${playingMatches.length}, rounds=[${playingMatches.map(m => m.round).join(',')}], tournament.currentRound=${tournament.currentRound}`);
+  
   if (playingMatches.length === 0) {
     return tournament.currentRound;
   }
