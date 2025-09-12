@@ -192,18 +192,22 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({ tournament, setTourname
             {(() => {
               const currentRound = getCurrentRound(tournament);
               const activeRounds = Array.from(new Set(tournament.matches
-                .filter(m => m.isCurrentlyPlaying)
+                .filter(m => !m.completed && m.isCurrentlyPlaying)
                 .map(m => m.round)));
               
               console.log(`Display logic debug: currentRound=${currentRound}, maxRounds=${tournament.maxRounds}, activeRounds=[${activeRounds.join(',')}]`);
               
-              // Only show FINAL ROUND if we're actually in the final round and it's the only active round
-              if (currentRound === tournament.maxRounds && activeRounds.length <= 1) {
-                return ' 🏁 FINAL ROUND';
-              } else if (currentRound > tournament.maxRounds) {
+              // Check if tournament is actually complete (all players finished all rounds)
+              const allPlayersFinished = tournament.players.every(p => p.roundsPlayed >= tournament.maxRounds);
+              
+              if (allPlayersFinished) {
                 return ' ✅ TOURNAMENT COMPLETE';
+              } else if (currentRound === tournament.maxRounds && activeRounds.length === 1) {
+                return ' 🏁 FINAL ROUND';
               } else if (activeRounds.length > 1) {
                 return ` (${activeRounds.length} rounds active)`;
+              } else if (activeRounds.length === 0) {
+                return ' (pairing needed)';
               }
               return '';
             })()}
