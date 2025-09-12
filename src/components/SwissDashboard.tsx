@@ -8,7 +8,8 @@ import {
 import { 
   initiatePairingProcess, 
   getPlayerStatus,
-  implementPairing 
+  implementPairing,
+  getCurrentRound 
 } from '../utils/swiss';
 
 interface SwissDashboardProps {
@@ -21,12 +22,15 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({ tournament, setTourname
   const [scenario, setScenario] = useState<PairingScenario | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
 
+  const [pairingResult, setPairingResult] = useState<{ canProceed: boolean; message: string } | null>(null);
+
   // Update pairing suggestions when tournament changes
   useEffect(() => {
     if (autoRefresh) {
       const result = initiatePairingProcess(tournament);
       setPairingSuggestions(result.suggestions);
       setScenario(result.scenario);
+      setPairingResult({ canProceed: result.canProceed, message: result.message });
     }
   }, [tournament, autoRefresh]);
 
@@ -34,10 +38,10 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({ tournament, setTourname
     if (pairingSuggestions.length > 0) {
       // Implement ALL pairing suggestions in the SAME round
       let updatedTournament = { ...tournament };
-      const currentRound = Math.max(...tournament.matches.map(m => m.round), 0) + 1;
+      const nextRound = getCurrentRound(tournament) + 1;
       
       // Check if we've reached the maximum rounds limit
-      if (currentRound > tournament.maxRounds) {
+      if (nextRound > tournament.maxRounds) {
         alert(`Tournament complete! Cannot create pairings beyond round ${tournament.maxRounds}.`);
         return;
       }
@@ -50,7 +54,7 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({ tournament, setTourname
           id: newMatchId,
           player1: suggestion.player1Id,
           player2: suggestion.player2Id,
-          round: currentRound,
+          round: nextRound,
           player1Score: null,
           player2Score: null,
           completed: false,
@@ -74,7 +78,7 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({ tournament, setTourname
           return {
             ...player,
             status: 'playing' as SwissPlayerStatus,
-            currentRound: currentRound,
+            currentRound: nextRound,
             opponentHistory: [...player.opponentHistory, ...(opponentId !== undefined ? [opponentId] : [])]
           };
         }
@@ -85,7 +89,7 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({ tournament, setTourname
         ...updatedTournament,
         players: updatedPlayers,
         matches: [...updatedTournament.matches, ...newMatches],
-        currentRound: currentRound
+        currentRound: nextRound
       };
       
       setTournament(updatedTournament);
@@ -184,8 +188,9 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({ tournament, setTourname
           border: '1px solid #dee2e6' 
         }}>
           <h4 style={{ margin: '0 0 10px 0', color: '#495057' }}>Tournament Progress</h4>
-          <p><strong>Round:</strong> {Math.max(...tournament.matches.map(m => m.round), 0) || 1} / {tournament.maxRounds} 
-            {Math.max(...tournament.matches.map(m => m.round), 0) === tournament.maxRounds ? ' 🏁 FINAL ROUND' : ''}
+          <p><strong>Round:</strong> {getCurrentRound(tournament)} / {tournament.maxRounds} 
+            {getCurrentRound(tournament) === tournament.maxRounds ? ' 🏁 FINAL ROUND' : ''}
+            {getCurrentRound(tournament) > tournament.maxRounds ? ' ✅ TOURNAMENT COMPLETE' : ''}
           </p>
           <p><strong>Matches:</strong> {completedMatches.length} completed, {currentMatches.length} playing</p>
         </div>
@@ -280,15 +285,17 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({ tournament, setTourname
                     </div>
                   </div>
                   <button 
+                    disabled={!!pairingResult && !pairingResult.canProceed}
                     style={{ 
-                      backgroundColor: '#17a2b8', 
+                      backgroundColor: pairingResult && !pairingResult.canProceed ? '#6c757d' : '#17a2b8', 
                       color: 'white', 
                       border: 'none',
                       padding: '6px 12px',
                       borderRadius: '4px',
                       fontSize: '0.8em',
-                      cursor: 'pointer',
-                      alignSelf: 'flex-start'
+                      cursor: pairingResult && !pairingResult.canProceed ? 'not-allowed' : 'pointer',
+                      alignSelf: 'flex-start',
+                      opacity: pairingResult && !pairingResult.canProceed ? 0.6 : 1
                     }}
                     onClick={() => {
                       const updatedTournament = implementPairing(tournament, suggestion);

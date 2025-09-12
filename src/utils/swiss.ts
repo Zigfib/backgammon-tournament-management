@@ -385,8 +385,8 @@ export const initiatePairingProcess = (tournament: SwissTournament): {
   message: string;
 } => {
   // Check if tournament has reached maximum rounds
-  const currentRound = Math.max(...tournament.matches.map(m => m.round), 0) + 1;
-  if (currentRound > tournament.maxRounds) {
+  const nextRound = getCurrentRound(tournament) + 1;
+  if (nextRound > tournament.maxRounds) {
     return {
       suggestions: [],
       scenario: { currentMatches: [], possibleOutcomes: [], viablePairings: [], probabilityOfSuccess: 1 },
@@ -429,6 +429,13 @@ export const implementPairing = (
   suggestion: PairingSuggestion
 ): SwissTournament => {
   const nextRound = getCurrentRound(tournament) + 1;
+  
+  // Guard against creating matches beyond maxRounds
+  if (nextRound > tournament.maxRounds) {
+    console.error(`Cannot create match for round ${nextRound} - tournament limited to ${tournament.maxRounds} rounds`);
+    return tournament; // Return unchanged tournament
+  }
+  
   const newMatchId = Math.max(...tournament.matches.map(m => m.id), -1) + 1;
   
   const newMatch: SwissMatch = {
