@@ -48,6 +48,24 @@ export const getPlayerStatus = (player: SwissPlayer, tournament: SwissTournament
   
   // Check if player has finished all rounds
   if (player.roundsPlayed >= tournament.maxRounds) {
+    // Additional check: only mark as finished if tournament allows it
+    // Players should wait if there are active rounds too far behind their completion
+    const activeRounds = Array.from(new Set(tournament.matches
+      .filter(m => m.isCurrentlyPlaying)
+      .map(m => m.round))).sort((a, b) => a - b);
+    
+    const playerHighestRound = player.roundsPlayed; // Since they completed all rounds
+    
+    if (activeRounds.length > 0) {
+      const lowestActiveRound = Math.min(...activeRounds);
+      // If there's any gap between lowest active round and player's completion, they should wait
+      // This ensures players don't show as "finished" while earlier rounds are still active
+      if (playerHighestRound - lowestActiveRound >= 1) {
+        console.log(`Player ${player.name} completed ${player.roundsPlayed} rounds but WAITING: active round ${lowestActiveRound} too far behind`);
+        return 'waiting';
+      }
+    }
+    
     // Debug logging to help identify status issues
     console.log(`Player ${player.name} marked as FINISHED: roundsPlayed=${player.roundsPlayed}, maxRounds=${tournament.maxRounds}`);
     return 'finished';
