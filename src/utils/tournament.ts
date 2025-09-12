@@ -118,21 +118,33 @@ export const updateMatchResult = (tournament: Tournament, matchId: number, playe
       const swissPlayer1 = updatedPlayers[match.player1] as any;
       const swissPlayer2 = updatedPlayers[match.player2] as any;
       
-      // Update rounds played
-      swissPlayer1.roundsPlayed = (swissPlayer1.roundsPlayed || 0) + 1;
-      swissPlayer2.roundsPlayed = (swissPlayer2.roundsPlayed || 0) + 1;
+      // Only update Swiss stats if this is a new completion (idempotent)
+      // Check if this match was already completed before
+      const wasAlreadyCompleted = match.completed;
       
-      // Update wins/losses and points earned
-      if (isPlayer1Winner) {
-        swissPlayer1.totalWins = (swissPlayer1.totalWins || 0) + 1;
-        swissPlayer1.pointsEarned = (swissPlayer1.pointsEarned || 0) + 3;
-        swissPlayer2.totalLosses = (swissPlayer2.totalLosses || 0) + 1;
-        swissPlayer2.pointsEarned = (swissPlayer2.pointsEarned || 0) + 1;
-      } else {
-        swissPlayer1.totalLosses = (swissPlayer1.totalLosses || 0) + 1;
-        swissPlayer1.pointsEarned = (swissPlayer1.pointsEarned || 0) + 1;
-        swissPlayer2.totalWins = (swissPlayer2.totalWins || 0) + 1;
-        swissPlayer2.pointsEarned = (swissPlayer2.pointsEarned || 0) + 3;
+      if (!wasAlreadyCompleted) {
+        // Update rounds played only on new completion
+        const oldRounds1 = swissPlayer1.roundsPlayed || 0;
+        const oldRounds2 = swissPlayer2.roundsPlayed || 0;
+        swissPlayer1.roundsPlayed = oldRounds1 + 1;
+        swissPlayer2.roundsPlayed = oldRounds2 + 1;
+        
+        // Debug logging for roundsPlayed changes
+        console.log(`Match completion: Player ${swissPlayer1.name} roundsPlayed: ${oldRounds1} -> ${swissPlayer1.roundsPlayed}`);
+        console.log(`Match completion: Player ${swissPlayer2.name} roundsPlayed: ${oldRounds2} -> ${swissPlayer2.roundsPlayed}`);
+        
+        // Update wins/losses and points earned (also idempotent)
+        if (isPlayer1Winner) {
+          swissPlayer1.totalWins = (swissPlayer1.totalWins || 0) + 1;
+          swissPlayer1.pointsEarned = (swissPlayer1.pointsEarned || 0) + 3;
+          swissPlayer2.totalLosses = (swissPlayer2.totalLosses || 0) + 1;
+          swissPlayer2.pointsEarned = (swissPlayer2.pointsEarned || 0) + 1;
+        } else {
+          swissPlayer1.totalLosses = (swissPlayer1.totalLosses || 0) + 1;
+          swissPlayer1.pointsEarned = (swissPlayer1.pointsEarned || 0) + 1;
+          swissPlayer2.totalWins = (swissPlayer2.totalWins || 0) + 1;
+          swissPlayer2.pointsEarned = (swissPlayer2.pointsEarned || 0) + 3;
+        }
       }
       
       // Update status to ready-to-pair

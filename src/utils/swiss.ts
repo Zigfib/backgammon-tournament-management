@@ -48,6 +48,8 @@ export const getPlayerStatus = (player: SwissPlayer, tournament: SwissTournament
   
   // Check if player has finished all rounds
   if (player.roundsPlayed >= tournament.maxRounds) {
+    // Debug logging to help identify status issues
+    console.log(`Player ${player.name} marked as FINISHED: roundsPlayed=${player.roundsPlayed}, maxRounds=${tournament.maxRounds}`);
     return 'finished';
   }
   
@@ -395,6 +397,25 @@ export const initiatePairingProcess = (tournament: SwissTournament): {
     };
   }
 
+  // Check round gap constraint: only allow 2 rounds to be played simultaneously
+  const activeRounds = Array.from(new Set(tournament.matches
+    .filter(m => m.isCurrentlyPlaying)
+    .map(m => m.round)));
+  
+  if (activeRounds.length > 0) {
+    const minActiveRound = Math.min(...activeRounds);
+    
+    // Don't allow round N+2 while round N is still active  
+    if (nextRound - minActiveRound >= 2) {
+      return {
+        suggestions: [],
+        scenario: { currentMatches: [], possibleOutcomes: [], viablePairings: [], probabilityOfSuccess: 1 },
+        canProceed: false,
+        message: `Cannot start round ${nextRound} while round ${minActiveRound} is still in progress. Maximum 2 rounds can play simultaneously.`
+      };
+    }
+  }
+
   const readyPlayers = tournament.players.filter(p => p.status === 'ready-to-pair');
   
   if (readyPlayers.length < 2) {
@@ -434,6 +455,19 @@ export const implementPairing = (
   if (nextRound > tournament.maxRounds) {
     console.error(`Cannot create match for round ${nextRound} - tournament limited to ${tournament.maxRounds} rounds`);
     return tournament; // Return unchanged tournament
+  }
+
+  // Defensive round gap constraint: only allow 2 rounds simultaneously  
+  const activeRounds = Array.from(new Set(tournament.matches
+    .filter(m => m.isCurrentlyPlaying)
+    .map(m => m.round)));
+    
+  if (activeRounds.length > 0) {
+    const minActiveRound = Math.min(...activeRounds);
+    if (nextRound - minActiveRound >= 2) {
+      console.error(`Cannot start round ${nextRound} while round ${minActiveRound} is still active. Maximum 2 rounds can play simultaneously.`);
+      return tournament; // Return unchanged tournament
+    }
   }
   
   const newMatchId = Math.max(...tournament.matches.map(m => m.id), -1) + 1;
@@ -502,7 +536,7 @@ export const createSwissTournament = (
     tournamentType: 'rapid-swiss',
     players: swissPlayers,
     matches: [],
-    currentRound: 1,
+    currentRound: 0, // Start at 0, first matches will be round 1
     maxRounds,
     pairingHistory: [],
     allowPointDifference,
