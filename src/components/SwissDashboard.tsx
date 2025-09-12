@@ -36,6 +36,12 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({ tournament, setTourname
       let updatedTournament = { ...tournament };
       const currentRound = Math.max(...tournament.matches.map(m => m.round), 0) + 1;
       
+      // Check if we've reached the maximum rounds limit
+      if (currentRound > tournament.maxRounds) {
+        alert(`Tournament complete! Cannot create pairings beyond round ${tournament.maxRounds}.`);
+        return;
+      }
+      
       // Create all matches with the same round number
       const newMatches = pairingSuggestions.map((suggestion, index) => {
         const newMatchId = Math.max(...updatedTournament.matches.map(m => m.id), -1) + index + 1;
@@ -178,7 +184,9 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({ tournament, setTourname
           border: '1px solid #dee2e6' 
         }}>
           <h4 style={{ margin: '0 0 10px 0', color: '#495057' }}>Tournament Progress</h4>
-          <p><strong>Round:</strong> {Math.max(...tournament.matches.map(m => m.round), 0) || 1} / {tournament.maxRounds}</p>
+          <p><strong>Round:</strong> {Math.max(...tournament.matches.map(m => m.round), 0) || 1} / {tournament.maxRounds} 
+            {Math.max(...tournament.matches.map(m => m.round), 0) === tournament.maxRounds ? ' 🏁 FINAL ROUND' : ''}
+          </p>
           <p><strong>Matches:</strong> {completedMatches.length} completed, {currentMatches.length} playing</p>
         </div>
 

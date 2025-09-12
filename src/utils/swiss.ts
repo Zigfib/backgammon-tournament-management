@@ -384,6 +384,17 @@ export const initiatePairingProcess = (tournament: SwissTournament): {
   canProceed: boolean;
   message: string;
 } => {
+  // Check if tournament has reached maximum rounds
+  const currentRound = Math.max(...tournament.matches.map(m => m.round), 0) + 1;
+  if (currentRound > tournament.maxRounds) {
+    return {
+      suggestions: [],
+      scenario: { currentMatches: [], possibleOutcomes: [], viablePairings: [], probabilityOfSuccess: 1 },
+      canProceed: false,
+      message: `Tournament complete! All ${tournament.maxRounds} rounds have been played.`
+    };
+  }
+
   const readyPlayers = tournament.players.filter(p => p.status === 'ready-to-pair');
   
   if (readyPlayers.length < 2) {

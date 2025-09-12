@@ -54,7 +54,7 @@ const PlayerSetup: React.FC<PlayerSetupProps> = ({
         const swissTournament = createSwissTournament({
           ...prev,
           players: updatedPlayers
-        }, 7, 1); // 7 rounds max, 1 point difference allowed
+        }, prev.numRounds, 1); // Use configured rounds, 1 point difference allowed
         
         console.log('Created Swiss tournament:', swissTournament);
         return swissTournament as any; // Type assertion needed due to interface differences
