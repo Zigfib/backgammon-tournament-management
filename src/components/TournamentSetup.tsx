@@ -135,6 +135,23 @@ const TournamentSetup: React.FC<TournamentSetupProps> = ({
           </select>
         </div>
         
+        {(tournament.tournamentType || 'round-robin') === 'rapid-swiss' && (
+          <div className="input-group">
+            <label htmlFor="allowPointDifference">Point Difference Tolerance</label>
+            <select 
+              id="allowPointDifference" 
+              value={(tournament as any).allowPointDifference || 0}
+              onChange={(e) => handleInputChange('allowPointDifference' as keyof Tournament, parseInt(e.target.value))}
+            >
+              <option value="0">Strict (0) - Players must have same points to pair</option>
+              <option value="1">Flexible (1) - Players within 1 point can pair</option>
+            </select>
+            <small style={{ color: '#666', fontSize: '12px', marginTop: '5px', display: 'block' }}>
+              Strict mode requires exact point matches. Flexible mode allows pairing players with different point totals.
+            </small>
+          </div>
+        )}
+        
         
       </div>
       

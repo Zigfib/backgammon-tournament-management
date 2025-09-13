@@ -86,15 +86,15 @@ export const updateMatchResult = (tournament: Tournament, matchId: number, playe
     let isPlayer1Winner = updatedMatch.player1Score > updatedMatch.player2Score;
     
     if (isPlayer1Winner) {
-      p1Points = 3; // Winner gets 3 points
-      p2Points = 1; // Loser gets 1 point
+      p1Points = 1; // Winner gets 1 point
+      p2Points = 0; // Loser gets 0 points
       winnerELO = prevPlayer1ELO;
       loserELO = prevPlayer2ELO;
       winnerScore = updatedMatch.player1Score;
       loserScore = updatedMatch.player2Score;
     } else {
-      p1Points = 1;
-      p2Points = 3;
+      p1Points = 0;
+      p2Points = 1;
       winnerELO = prevPlayer2ELO;
       loserELO = prevPlayer1ELO;
       winnerScore = updatedMatch.player2Score;
@@ -140,14 +140,26 @@ export const updateMatchResult = (tournament: Tournament, matchId: number, playe
         // Update wins/losses and points earned (also idempotent)
         if (isPlayer1Winner) {
           swissPlayer1.totalWins = (swissPlayer1.totalWins || 0) + 1;
-          swissPlayer1.pointsEarned = (swissPlayer1.pointsEarned || 0) + 3;
+          swissPlayer1.pointsEarned = (swissPlayer1.pointsEarned || 0) + 1;
           swissPlayer2.totalLosses = (swissPlayer2.totalLosses || 0) + 1;
-          swissPlayer2.pointsEarned = (swissPlayer2.pointsEarned || 0) + 1;
+          swissPlayer2.pointsEarned = (swissPlayer2.pointsEarned || 0) + 0;
         } else {
           swissPlayer1.totalLosses = (swissPlayer1.totalLosses || 0) + 1;
-          swissPlayer1.pointsEarned = (swissPlayer1.pointsEarned || 0) + 1;
+          swissPlayer1.pointsEarned = (swissPlayer1.pointsEarned || 0) + 0;
           swissPlayer2.totalWins = (swissPlayer2.totalWins || 0) + 1;
-          swissPlayer2.pointsEarned = (swissPlayer2.pointsEarned || 0) + 3;
+          swissPlayer2.pointsEarned = (swissPlayer2.pointsEarned || 0) + 1;
+        }
+        
+        // CRITICAL: Update opponent history to prevent rematches
+        swissPlayer1.opponentHistory = swissPlayer1.opponentHistory || [];
+        swissPlayer2.opponentHistory = swissPlayer2.opponentHistory || [];
+        
+        // Only add to opponent history if not already there (avoid duplicates)
+        if (!swissPlayer1.opponentHistory.includes(match.player2)) {
+          swissPlayer1.opponentHistory.push(match.player2);
+        }
+        if (!swissPlayer2.opponentHistory.includes(match.player1)) {
+          swissPlayer2.opponentHistory.push(match.player1);
         }
       }
       

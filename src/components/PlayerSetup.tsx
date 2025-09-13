@@ -58,7 +58,7 @@ const PlayerSetup: React.FC<PlayerSetupProps> = ({
           ...prev,
           players: updatedPlayers,
           numRounds: clampedRounds
-        }, clampedRounds, 1); // Use configured rounds, 1 point difference allowed
+        }, clampedRounds, (prev as any).allowPointDifference || 0); // Use user-configured point difference tolerance
         
         console.log('Created Swiss tournament:', swissTournament);
         return swissTournament as any; // Type assertion needed due to interface differences
