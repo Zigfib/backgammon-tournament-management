@@ -129,9 +129,13 @@ export const updateMatchResult = (tournament: Tournament, matchId: number, playe
         swissPlayer1.roundsPlayed = oldRounds1 + 1;
         swissPlayer2.roundsPlayed = oldRounds2 + 1;
         
+        // Update currentRound to the next round they should be paired for
+        swissPlayer1.currentRound = swissPlayer1.roundsPlayed; // Now ready for next round
+        swissPlayer2.currentRound = swissPlayer2.roundsPlayed; // Now ready for next round
+        
         // Debug logging for roundsPlayed changes
-        console.log(`Match completion: Player ${swissPlayer1.name} roundsPlayed: ${oldRounds1} -> ${swissPlayer1.roundsPlayed}`);
-        console.log(`Match completion: Player ${swissPlayer2.name} roundsPlayed: ${oldRounds2} -> ${swissPlayer2.roundsPlayed}`);
+        console.log(`Match completion: Player ${swissPlayer1.name} roundsPlayed: ${oldRounds1} -> ${swissPlayer1.roundsPlayed}, currentRound -> ${swissPlayer1.currentRound}`);
+        console.log(`Match completion: Player ${swissPlayer2.name} roundsPlayed: ${oldRounds2} -> ${swissPlayer2.roundsPlayed}, currentRound -> ${swissPlayer2.currentRound}`);
         
         // Update wins/losses and points earned (also idempotent)
         if (isPlayer1Winner) {
