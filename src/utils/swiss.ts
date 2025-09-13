@@ -563,14 +563,23 @@ export const createSwissTournament = (
   }));
   
   return {
-    ...regularTournament,
+    // Take specific properties from regular tournament (avoid spreading numRounds)
+    name: regularTournament.name,
+    rankingSystem: regularTournament.rankingSystem,
+    scoreEntryMode: regularTournament.scoreEntryMode,
+    isAdmin: regularTournament.isAdmin,
+    maxPoints: regularTournament.maxPoints,
+    // Swiss-specific properties
     tournamentType: 'rapid-swiss',
     players: swissPlayers,
     matches: [],
     currentRound: 0, // Start at 0, first matches will be round 1
-    maxRounds,
+    maxRounds, // Use the explicitly passed maxRounds parameter
     pairingHistory: [],
     allowPointDifference,
-    minimumPlayers: swissPlayers.length
+    minimumPlayers: swissPlayers.length,
+    // Initialize required fields
+    results: {},
+    numRounds: maxRounds // Also set numRounds for consistency
   };
 };

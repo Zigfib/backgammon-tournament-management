@@ -50,6 +50,10 @@ const PlayerSetup: React.FC<PlayerSetupProps> = ({
 
       // Check if this is a Swiss tournament
       if (prev.tournamentType === 'rapid-swiss') {
+        // Debug: Log the numRounds value being passed
+        console.log('PlayerSetup: Creating Swiss tournament with numRounds =', prev.numRounds);
+        console.log('PlayerSetup: Full tournament state before Swiss creation:', prev);
+        
         // Create Swiss tournament - no pre-generated matches
         const swissTournament = createSwissTournament({
           ...prev,
