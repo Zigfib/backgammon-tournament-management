@@ -50,13 +50,7 @@ export const getPlayerStatus = (player: SwissPlayer, tournament: SwissTournament
     return 'playing';
   }
   
-  // 2. FINISHED: Player completed all required rounds (regardless of tournament state)
-  if (player.roundsPlayed >= tournament.maxRounds) {
-    console.log(`Player ${player.name} marked as FINISHED: completed ${player.roundsPlayed}/${tournament.maxRounds} rounds`);
-    return 'finished';
-  }
-  
-  // 3. WAITING: Player finished a round but blocked by "2 rounds simultaneously" constraint
+  // 2. WAITING: Player blocked by "2 rounds simultaneously" constraint (check BEFORE finished)
   const activeRounds = Array.from(new Set(tournament.matches
     .filter(m => m.isCurrentlyPlaying)
     .map(m => m.round))).sort((a, b) => a - b);
@@ -71,6 +65,12 @@ export const getPlayerStatus = (player: SwissPlayer, tournament: SwissTournament
       console.log(`Player ${player.name} WAITING: completed round ${playerCompletedRound} but round ${lowestActiveRound} still active (2-round limit)`);
       return 'waiting';
     }
+  }
+  
+  // 3. FINISHED: Player completed all required rounds AND not blocked by constraints
+  if (player.roundsPlayed >= tournament.maxRounds) {
+    console.log(`Player ${player.name} marked as FINISHED: completed ${player.roundsPlayed}/${tournament.maxRounds} rounds`);
+    return 'finished';
   }
   
   // 4. READY-TO-PAIR: Available for pairing (default case)
