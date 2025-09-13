@@ -72,8 +72,8 @@ export const updateMatchResult = (tournament: Tournament, matchId: number, playe
   updatedMatch.completed = updatedMatch.player1Score !== null && updatedMatch.player2Score !== null;
   
   // For Swiss tournaments, also update isCurrentlyPlaying status
-  if (updatedMatch.completed && 'isCurrentlyPlaying' in updatedMatch) {
-    (updatedMatch as any).isCurrentlyPlaying = false;
+  if (isSwissTournament && 'isCurrentlyPlaying' in updatedMatch) {
+    (updatedMatch as any).isCurrentlyPlaying = updatedMatch.completed ? false : true;
   }
   
   const updatedPlayers = [...tournament.players];
