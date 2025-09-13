@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   SwissTournament, 
   PairingSuggestion, 
-  PairingScenario,
-  SwissPlayerStatus 
+  PairingScenario
 } from '../types';
 import { 
   initiatePairingProcess, 
@@ -36,61 +35,13 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({ tournament, setTourname
 
   const handleImplementAllPairings = () => {
     if (pairingSuggestions.length > 0) {
-      // Implement ALL pairing suggestions in the SAME round
+      // Use the proper implementPairing function for each suggestion to ensure validation
       let updatedTournament = { ...tournament };
-      const nextRound = getCurrentRound(tournament) + 1;
       
-      // Check if we've reached the maximum rounds limit
-      if (nextRound > tournament.maxRounds) {
-        alert(`Tournament complete! Cannot create pairings beyond round ${tournament.maxRounds}.`);
-        return;
+      // Implement each pairing suggestion using the validated implementPairing function
+      for (const suggestion of pairingSuggestions) {
+        updatedTournament = implementPairing(updatedTournament, suggestion);
       }
-      
-      // Create all matches with the same round number
-      const newMatches = pairingSuggestions.map((suggestion, index) => {
-        const newMatchId = Math.max(...updatedTournament.matches.map(m => m.id), -1) + index + 1;
-        
-        return {
-          id: newMatchId,
-          player1: suggestion.player1Id,
-          player2: suggestion.player2Id,
-          round: nextRound,
-          player1Score: null,
-          player2Score: null,
-          completed: false,
-          isCurrentlyPlaying: true,
-          startTime: new Date(),
-          estimatedDuration: 45
-        };
-      });
-      
-      // Update all players at once
-      const pairedPlayerIds = new Set(pairingSuggestions.flatMap(s => [s.player1Id, s.player2Id]));
-      const updatedPlayers = updatedTournament.players.map(player => {
-        if (pairedPlayerIds.has(player.id)) {
-          const suggestion = pairingSuggestions.find(s => 
-            s.player1Id === player.id || s.player2Id === player.id
-          );
-          const opponentId = suggestion?.player1Id === player.id 
-            ? suggestion.player2Id 
-            : suggestion?.player1Id;
-            
-          return {
-            ...player,
-            status: 'playing' as SwissPlayerStatus,
-            currentRound: nextRound,
-            opponentHistory: [...player.opponentHistory, ...(opponentId !== undefined ? [opponentId] : [])]
-          };
-        }
-        return player;
-      });
-      
-      updatedTournament = {
-        ...updatedTournament,
-        players: updatedPlayers,
-        matches: [...updatedTournament.matches, ...newMatches],
-        currentRound: nextRound
-      };
       
       setTournament(updatedTournament);
     }
