@@ -41,7 +41,7 @@ export const getCurrentRound = (tournament: SwissTournament): number => {
 };
 
 export const getPlayerStatus = (player: SwissPlayer, tournament: SwissTournament): SwissPlayerStatus => {
-  // Check if player is currently playing a match
+  // 1. PLAYING: Player is currently in an active match (admin confirmed pairing)
   const currentMatch = tournament.matches.find(
     m => m.isCurrentlyPlaying && (m.player1 === player.id || m.player2 === player.id)
   );
@@ -50,41 +50,31 @@ export const getPlayerStatus = (player: SwissPlayer, tournament: SwissTournament
     return 'playing';
   }
   
-  // Check if player has finished all rounds
+  // 2. FINISHED: Player completed all required rounds (regardless of tournament state)
   if (player.roundsPlayed >= tournament.maxRounds) {
-    // Additional check: only mark as finished if tournament allows it
-    // Players should wait if there are active rounds too far behind their completion
-    const activeRounds = Array.from(new Set(tournament.matches
-      .filter(m => m.isCurrentlyPlaying)
-      .map(m => m.round))).sort((a, b) => a - b);
-    
-    const playerHighestRound = player.roundsPlayed; // Since they completed all rounds
-    
-    if (activeRounds.length > 0) {
-      const lowestActiveRound = Math.min(...activeRounds);
-      // If there's any gap between lowest active round and player's completion, they should wait
-      // This ensures players don't show as "finished" while earlier rounds are still active
-      if (playerHighestRound - lowestActiveRound >= 1) {
-        console.log(`Player ${player.name} completed ${player.roundsPlayed} rounds but WAITING: active round ${lowestActiveRound} too far behind`);
-        return 'waiting';
-      }
-    }
-    
-    // Debug logging to help identify status issues
-    console.log(`Player ${player.name} marked as FINISHED: roundsPlayed=${player.roundsPlayed}, maxRounds=${tournament.maxRounds}`);
+    console.log(`Player ${player.name} marked as FINISHED: completed ${player.roundsPlayed}/${tournament.maxRounds} rounds`);
     return 'finished';
   }
   
-  // Check if player has completed current round but not paired for next
-  const currentRound = getCurrentRound(tournament);
-  const hasCompletedCurrentRound = player.currentRound >= currentRound;
-  const isPairedForNextRound = isPlayerPairedForNextRound(player, tournament);
+  // 3. WAITING: Player finished a round but blocked by "2 rounds simultaneously" constraint
+  const activeRounds = Array.from(new Set(tournament.matches
+    .filter(m => m.isCurrentlyPlaying)
+    .map(m => m.round))).sort((a, b) => a - b);
   
-  if (hasCompletedCurrentRound && !isPairedForNextRound) {
-    return 'ready-to-pair';
+  if (activeRounds.length > 0) {
+    const lowestActiveRound = Math.min(...activeRounds);
+    const playerCompletedRound = player.roundsPlayed;
+    
+    // If player is 1+ rounds ahead of the lowest active round, they must wait
+    // (Cannot start round N+2 while round N is active)
+    if (playerCompletedRound - lowestActiveRound >= 1) {
+      console.log(`Player ${player.name} WAITING: completed round ${playerCompletedRound} but round ${lowestActiveRound} still active (2-round limit)`);
+      return 'waiting';
+    }
   }
   
-  return 'waiting';
+  // 4. READY-TO-PAIR: Available for pairing (default case)
+  return 'ready-to-pair';
 };
 
 export const isPlayerPairedForNextRound = (
@@ -103,7 +93,7 @@ export const isPlayerPairedForNextRound = (
 export const findLegalPairings = (
   tournament: SwissTournament
 ): PairingSuggestion[] => {
-  const readyPlayers = tournament.players.filter(p => p.status === 'ready-to-pair');
+  const readyPlayers = tournament.players.filter(p => getPlayerStatus(p, tournament) === 'ready-to-pair');
   
   if (readyPlayers.length < 2) return [];
   
@@ -438,7 +428,7 @@ export const initiatePairingProcess = (tournament: SwissTournament): {
     }
   }
 
-  const readyPlayers = tournament.players.filter(p => p.status === 'ready-to-pair');
+  const readyPlayers = tournament.players.filter(p => getPlayerStatus(p, tournament) === 'ready-to-pair');
   
   if (readyPlayers.length < 2) {
     return {
@@ -490,6 +480,25 @@ export const implementPairing = (
       console.error(`Cannot start round ${nextRound} while round ${minActiveRound} is still active. Maximum 2 rounds can play simultaneously.`);
       return tournament; // Return unchanged tournament
     }
+  }
+  
+  // Guard against pairing players into rounds they've already completed
+  const player1 = tournament.players.find(p => p.id === suggestion.player1Id);
+  const player2 = tournament.players.find(p => p.id === suggestion.player2Id);
+  
+  if (!player1 || !player2) {
+    console.error(`Cannot find players: ${suggestion.player1Id}, ${suggestion.player2Id}`);
+    return tournament; // Return unchanged tournament
+  }
+  
+  if (player1.roundsPlayed + 1 !== nextRound) {
+    console.error(`Player ${player1.name} cannot be paired for round ${nextRound} - they need round ${player1.roundsPlayed + 1}`);
+    return tournament; // Return unchanged tournament  
+  }
+  
+  if (player2.roundsPlayed + 1 !== nextRound) {
+    console.error(`Player ${player2.name} cannot be paired for round ${nextRound} - they need round ${player2.roundsPlayed + 1}`);
+    return tournament; // Return unchanged tournament
   }
   
   const newMatchId = Math.max(...tournament.matches.map(m => m.id), -1) + 1;
