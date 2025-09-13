@@ -9,8 +9,8 @@ interface StandingsProps {
 
 const Standings: React.FC<StandingsProps> = ({ tournament }) => {
   const sortedPlayers = tournament.rankingSystem === 'hybrid' 
-    ? calculateHybridRanking(tournament.players)
-    : calculateStandardRanking(tournament.players);
+    ? calculateHybridRanking(tournament.players, tournament.results, tournament.tournamentType)
+    : calculateStandardRanking(tournament.players, tournament.results, tournament.tournamentType);
 
   const getRankingExplanation = () => {
     if (tournament.rankingSystem === 'hybrid') {
@@ -87,8 +87,8 @@ const Standings: React.FC<StandingsProps> = ({ tournament }) => {
                       </span>
                     </td>
                   )}
-                  <td>{player.points}</td>
-                  <td>{player.matches}</td>
+                  <td>{tournament.tournamentType === 'rapid-swiss' ? (player as any).pointsEarned || 0 : player.points}</td>
+                  <td>{tournament.tournamentType === 'rapid-swiss' ? (player as any).roundsPlayed || 0 : player.matches}</td>
                   <td>{player.tiebreakers.winsAgainstSamePoints}</td>
                   <td>{player.tiebreakers.buchholzScore}</td>
                   <td>{player.goalDiff > 0 ? '+' : ''}{player.goalDiff}</td>

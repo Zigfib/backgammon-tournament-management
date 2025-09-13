@@ -20,17 +20,28 @@ const TournamentTable: React.FC<TournamentTableProps> = ({ tournament }) => {
   ];
 
   const getStatValue = (player: any, key: string) => {
+    const isSwissTournament = tournament.tournamentType === 'rapid-swiss';
+    
     switch (key) {
       case 'currentElo':
         return player.currentElo || player.startingElo;
       case 'eloImprovement':
         const improvement = (player.currentElo || player.startingElo) - player.startingElo;
         return (improvement > 0 ? '+' : '') + improvement;
+      case 'points':
+        // Use pointsEarned for Swiss tournaments, points for Round-Robin
+        return isSwissTournament ? (player.pointsEarned || 0) : (player.points || 0);
       case 'pointsPercent':
-        return player.matches > 0 ? Math.round((player.points / (player.matches * 3)) * 100) + '%' : '0%';
+        if (isSwissTournament) {
+          // Swiss: 1 point maximum per match
+          const matches = player.roundsPlayed || 0;
+          return matches > 0 ? Math.round(((player.pointsEarned || 0) / matches) * 100) + '%' : '0%';
+        } else {
+          // Round-Robin: 3 points maximum per match
+          return player.matches > 0 ? Math.round((player.points / (player.matches * 3)) * 100) + '%' : '0%';
+        }
       case 'remainingMatches':
         // Different calculation for Swiss vs Round-Robin tournaments
-        const isSwissTournament = tournament.tournamentType === 'rapid-swiss';
         const totalMatches = isSwissTournament 
           ? (tournament as any).maxRounds || tournament.numRounds  // Swiss: each player plays maxRounds matches
           : (tournament.players.length - 1) * tournament.numRounds; // Round-Robin: against all players each round
