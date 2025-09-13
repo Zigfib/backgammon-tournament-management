@@ -44,7 +44,7 @@ const MainContent: React.FC<MainContentProps> = ({ tournament, setTournament }) 
           className={`tab ${activeTab === 'matches' ? 'active' : ''}`}
           onClick={() => setActiveTab('matches')}
         >
-          {isSwiss ? 'Match History' : 'Match Entry'}
+          Match Scores
         </button>
         <button
           className={`tab ${activeTab === 'table' ? 'active' : ''}`}

@@ -42,6 +42,8 @@ Preferred communication style: Simple, everyday language.
 - **Pairing Algorithm**: Sophisticated Swiss pairing engine with permutation-based future viability checking
 - **Player Status Management**: Real-time tracking of player availability (available, playing, finished)
 - **Dynamic Round Management**: Flexible round progression based on match completion rather than fixed schedules
+- **Match Score Display**: Round-based column layout showing all matches organized by round for easy progress tracking and opponent history visibility
+- **Swiss Configuration**: Swiss tournaments limited to 3-5 rounds for optimal layout and user experience
 
 # External Dependencies
 

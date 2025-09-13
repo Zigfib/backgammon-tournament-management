@@ -50,15 +50,15 @@ const PlayerSetup: React.FC<PlayerSetupProps> = ({
 
       // Check if this is a Swiss tournament
       if (prev.tournamentType === 'rapid-swiss') {
-        // Debug: Log the numRounds value being passed
-        console.log('PlayerSetup: Creating Swiss tournament with numRounds =', prev.numRounds);
-        console.log('PlayerSetup: Full tournament state before Swiss creation:', prev);
+        // Enforce Swiss rounds limit (3-5)
+        const clampedRounds = Math.max(3, Math.min(5, prev.numRounds));
         
         // Create Swiss tournament - no pre-generated matches
         const swissTournament = createSwissTournament({
           ...prev,
-          players: updatedPlayers
-        }, prev.numRounds, 1); // Use configured rounds, 1 point difference allowed
+          players: updatedPlayers,
+          numRounds: clampedRounds
+        }, clampedRounds, 1); // Use configured rounds, 1 point difference allowed
         
         console.log('Created Swiss tournament:', swissTournament);
         return swissTournament as any; // Type assertion needed due to interface differences

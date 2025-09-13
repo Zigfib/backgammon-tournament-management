@@ -104,7 +104,7 @@ const MatchEntry: React.FC<MatchEntryProps> = ({ tournament, setTournament }) =>
   if (!tournament.matches || tournament.matches.length === 0) {
     return (
       <div>
-        <h2>Enter Match Results</h2>
+        <h2>Match Scores by Round</h2>
         <p>No matches available. Please ensure the tournament has been properly set up with players.</p>
       </div>
     );
@@ -113,7 +113,7 @@ const MatchEntry: React.FC<MatchEntryProps> = ({ tournament, setTournament }) =>
   if (!tournament.players || tournament.players.length === 0) {
     return (
       <div>
-        <h2>Enter Match Results</h2>
+        <h2>Match Scores by Round</h2>
         <p>No players available. Please set up players first.</p>
       </div>
     );
@@ -121,7 +121,7 @@ const MatchEntry: React.FC<MatchEntryProps> = ({ tournament, setTournament }) =>
 
   return (
     <div>
-      <h2>Enter Match Results</h2>
+      <h2>Match Scores by Round</h2>
       <div style={{ background: '#e3f2fd', padding: '15px', borderRadius: '8px', marginBottom: '20px' }}>
         <h4 style={{ margin: '0 0 10px 0', color: '#1976d2' }}>📊 ELO Rating System Active</h4>
         <p style={{ margin: 0, fontSize: '14px', color: '#424242' }}>
@@ -130,81 +130,134 @@ const MatchEntry: React.FC<MatchEntryProps> = ({ tournament, setTournament }) =>
         </p>
       </div>
       
-      <div>
-        {tournament.matches.map(match => {
-          const p1 = tournament.players[match.player1];
-          const p2 = tournament.players[match.player2];
-          
-          // Calculate expected outcome for display
-          const expectedP1 = (1 / (1 + Math.pow(10, (p2.currentElo - p1.currentElo) / 400)) * 100).toFixed(0);
-          const expectedP2 = (100 - parseInt(expectedP1)).toString();
-          
-          // Get current scores (either pending or submitted)
-          const currentScores = pendingScores[match.id] || {
-            player1Score: match.player1Score?.toString() || '',
-            player2Score: match.player2Score?.toString() || ''
-          };
-          
-          const isMatchSubmitted = match.completed;
-          const canSubmit = isValidScore(match.id);
-          
-          return (
-            <div key={match.id} className="match-input" style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-              <div>
-                <label>{p1.name} ({p1.currentElo})</label>
-                <small style={{ color: '#666', fontSize: '12px' }}>Expected: {expectedP1}%</small>
-                <input 
-                  type="number" 
-                  value={currentScores.player1Score} 
-                  min="0" 
-                  max={tournament.maxPoints}
-                  disabled={isMatchSubmitted}
-                  onChange={(e) => handleScoreChange(match.id, 'player1', e.target.value)}
-                  onFocus={() => handleAutoComplete(match.id, 'player1')}
-                />
-              </div>
-              <div className="vs-text">vs<br />Round {match.round}</div>
-              <div>
-                <label>{p2.name} ({p2.currentElo})</label>
-                <small style={{ color: '#666', fontSize: '12px' }}>Expected: {expectedP2}%</small>
-                <input 
-                  type="number" 
-                  value={currentScores.player2Score} 
-                  min="0" 
-                  max={tournament.maxPoints}
-                  disabled={isMatchSubmitted}
-                  onChange={(e) => handleScoreChange(match.id, 'player2', e.target.value)}
-                  onFocus={() => handleAutoComplete(match.id, 'player2')}
-                />
-              </div>
-              <div>
-                {isMatchSubmitted ? (
-                  <button 
-                    className="btn btn-success" 
-                    onClick={() => editScore(match.id)}
-                    style={{ padding: '8px 16px', fontSize: '14px' }}
-                  >
-                    Edit Score
-                  </button>
-                ) : (
-                  <button 
-                    className="btn" 
-                    onClick={() => submitScore(match.id)}
-                    disabled={!canSubmit}
-                    style={{ 
-                      padding: '8px 16px', 
-                      fontSize: '14px',
-                      opacity: canSubmit ? 1 : 0.5,
-                      cursor: canSubmit ? 'pointer' : 'not-allowed'
-                    }}
-                  >
-                    Submit Score
-                  </button>
-                )}
+      <div style={{ display: 'flex', gap: '20px', overflowX: 'auto', paddingBottom: '20px' }}>
+        {(() => {
+          // Group matches by round
+          const matchesByRound: { [round: number]: typeof tournament.matches } = {};
+          tournament.matches.forEach(match => {
+            if (!matchesByRound[match.round]) {
+              matchesByRound[match.round] = [];
+            }
+            matchesByRound[match.round].push(match);
+          });
+
+          // Get all round numbers and sort them
+          const rounds = Object.keys(matchesByRound).map(Number).sort((a, b) => a - b);
+
+          return rounds.map(roundNumber => (
+            <div key={roundNumber} style={{ minWidth: '300px', flex: '1' }}>
+              <h3 style={{ 
+                textAlign: 'center', 
+                background: '#f5f5f5', 
+                margin: '0 0 15px 0', 
+                padding: '10px', 
+                borderRadius: '8px',
+                color: '#333'
+              }}>
+                Round {roundNumber}
+              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                {matchesByRound[roundNumber].map(match => {
+                  const p1 = tournament.players[match.player1];
+                  const p2 = tournament.players[match.player2];
+                  
+                  // Calculate expected outcome for display
+                  const expectedP1 = (1 / (1 + Math.pow(10, (p2.currentElo - p1.currentElo) / 400)) * 100).toFixed(0);
+                  const expectedP2 = (100 - parseInt(expectedP1)).toString();
+                  
+                  // Get current scores (either pending or submitted)
+                  const currentScores = pendingScores[match.id] || {
+                    player1Score: match.player1Score?.toString() || '',
+                    player2Score: match.player2Score?.toString() || ''
+                  };
+                  
+                  const isMatchSubmitted = match.completed;
+                  const canSubmit = isValidScore(match.id);
+                  
+                  return (
+                    <div 
+                      key={match.id} 
+                      style={{ 
+                        background: isMatchSubmitted ? '#e8f5e8' : '#fff',
+                        border: '1px solid #ddd', 
+                        borderRadius: '8px', 
+                        padding: '15px' 
+                      }}
+                    >
+                      {/* Player 1 */}
+                      <div style={{ marginBottom: '10px' }}>
+                        <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold' }}>
+                          {p1.name} ({p1.currentElo})
+                        </label>
+                        <small style={{ color: '#666', fontSize: '12px' }}>Expected: {expectedP1}%</small>
+                        <input 
+                          type="number" 
+                          value={currentScores.player1Score} 
+                          min="0" 
+                          max={tournament.maxPoints}
+                          disabled={isMatchSubmitted}
+                          onChange={(e) => handleScoreChange(match.id, 'player1', e.target.value)}
+                          onFocus={() => handleAutoComplete(match.id, 'player1')}
+                          style={{ width: '100%', marginTop: '5px', padding: '5px' }}
+                        />
+                      </div>
+                      
+                      <div style={{ textAlign: 'center', margin: '10px 0', fontWeight: 'bold', color: '#666' }}>
+                        VS
+                      </div>
+                      
+                      {/* Player 2 */}
+                      <div style={{ marginBottom: '15px' }}>
+                        <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold' }}>
+                          {p2.name} ({p2.currentElo})
+                        </label>
+                        <small style={{ color: '#666', fontSize: '12px' }}>Expected: {expectedP2}%</small>
+                        <input 
+                          type="number" 
+                          value={currentScores.player2Score} 
+                          min="0" 
+                          max={tournament.maxPoints}
+                          disabled={isMatchSubmitted}
+                          onChange={(e) => handleScoreChange(match.id, 'player2', e.target.value)}
+                          onFocus={() => handleAutoComplete(match.id, 'player2')}
+                          style={{ width: '100%', marginTop: '5px', padding: '5px' }}
+                        />
+                      </div>
+                      
+                      {/* Action Button */}
+                      <div style={{ textAlign: 'center' }}>
+                        {isMatchSubmitted ? (
+                          <button 
+                            className="btn btn-success" 
+                            onClick={() => editScore(match.id)}
+                            style={{ padding: '8px 16px', fontSize: '14px', width: '100%' }}
+                          >
+                            Edit Score
+                          </button>
+                        ) : (
+                          <button 
+                            className="btn" 
+                            onClick={() => submitScore(match.id)}
+                            disabled={!canSubmit}
+                            style={{
+                              padding: '8px 16px',
+                              fontSize: '14px',
+                              width: '100%',
+                              opacity: canSubmit ? 1 : 0.5,
+                              cursor: canSubmit ? 'pointer' : 'not-allowed'
+                            }}
+                          >
+                            Submit Score
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
-          );
-        })}
+          ));
+        })()}
       </div>
     </div>
   );
