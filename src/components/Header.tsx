@@ -42,6 +42,9 @@ const Header: React.FC<HeaderProps> = ({ tournament, setTournament, setAppState 
       if (!confirmed) return;
     }
     
+    // Clear localStorage to prevent auto-loading old tournament
+    localStorage.removeItem('backgammonTournament');
+    
     // Reset to initial tournament state
     setTournament({
       name: '',

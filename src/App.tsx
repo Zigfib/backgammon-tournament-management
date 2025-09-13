@@ -28,7 +28,7 @@ const App: React.FC = () => {
     return {
       name: '',
       players: [],
-      numRounds: 2,
+      numRounds: 3, // Default to 3 rounds (Swiss minimum, also valid for round-robin)
       maxPoints: 11,
       matches: [],
       results: {},
