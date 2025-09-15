@@ -13,6 +13,75 @@ import {
  * Based on VBA implementation with permutation-based future viability checking
  */
 
+// Emergency Recovery Functions
+export const detectTournamentDeadlock = (tournament: SwissTournament): boolean => {
+  // Detect if some players are finished while others are still playing in earlier rounds
+  const finishedPlayers = tournament.players.filter(p => p.roundsPlayed >= tournament.maxRounds);
+  const playingMatches = tournament.matches.filter(m => m.isCurrentlyPlaying);
+  
+  if (finishedPlayers.length > 0 && playingMatches.length > 0) {
+    // Check if any playing matches involve players at different round levels
+    const activeRounds = Array.from(new Set(playingMatches.map(m => m.round)));
+    const minActiveRound = Math.min(...activeRounds);
+    const maxActiveRound = Math.max(...activeRounds);
+    
+    // Deadlock if: players finished AND multiple rounds active OR finished players while early rounds active
+    return maxActiveRound - minActiveRound > 0 || minActiveRound < tournament.maxRounds;
+  }
+  
+  return false;
+};
+
+export const recoverTournamentFromDeadlock = (tournament: SwissTournament): SwissTournament => {
+  console.log('🚨 Recovering tournament from deadlock state...');
+  
+  // Find the highest completed round that all non-finished players have completed
+  const nonFinishedPlayers = tournament.players.filter(p => p.roundsPlayed < tournament.maxRounds);
+  const minRoundsCompleted = Math.min(...nonFinishedPlayers.map(p => p.roundsPlayed));
+  
+  console.log(`Recovery: ${nonFinishedPlayers.length} players still active, min rounds completed: ${minRoundsCompleted}`);
+  
+  // Cancel all matches beyond the safe recovery round
+  const safeRound = minRoundsCompleted + 1;
+  const updatedMatches = tournament.matches.map(match => {
+    if (match.round > safeRound && match.isCurrentlyPlaying) {
+      console.log(`Canceling premature match in round ${match.round} (safe round: ${safeRound})`);
+      return {
+        ...match,
+        completed: false,
+        isCurrentlyPlaying: false,
+        player1Score: null,
+        player2Score: null
+      };
+    }
+    return match;
+  });
+  
+  // Reset players who were in premature rounds
+  const updatedPlayers = tournament.players.map(player => {
+    if (player.roundsPlayed > minRoundsCompleted && player.roundsPlayed < tournament.maxRounds) {
+      console.log(`Resetting player ${player.name} from round ${player.roundsPlayed} to ${minRoundsCompleted}`);
+      return {
+        ...player,
+        roundsPlayed: minRoundsCompleted,
+        status: 'ready-to-pair' as SwissPlayerStatus,
+        currentRound: minRoundsCompleted
+      };
+    }
+    return player;
+  });
+  
+  const recoveredTournament = {
+    ...tournament,
+    matches: updatedMatches,
+    players: updatedPlayers,
+    currentRound: safeRound
+  };
+  
+  console.log('✅ Tournament recovery complete');
+  return recoveredTournament;
+};
+
 // Player Status Management
 export const updatePlayerStatus = (
   tournament: SwissTournament,

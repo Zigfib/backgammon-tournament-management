@@ -8,7 +8,9 @@ import {
   initiatePairingProcess, 
   getPlayerStatus,
   implementPairing,
-  getCurrentRound 
+  getCurrentRound,
+  detectTournamentDeadlock,
+  recoverTournamentFromDeadlock
 } from '../utils/swiss';
 
 interface SwissDashboardProps {
@@ -46,6 +48,15 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({ tournament, setTourname
       setTournament(updatedTournament);
     }
   };
+
+  const handleRecoverTournament = () => {
+    console.log('🚨 User initiated tournament recovery');
+    const recoveredTournament = recoverTournamentFromDeadlock(tournament);
+    setTournament(recoveredTournament);
+  };
+
+  // Check if tournament is in deadlock state
+  const isDeadlocked = detectTournamentDeadlock(tournament);
 
   const getStatusColor = (status: string): string => {
     switch (status) {
@@ -197,8 +208,42 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({ tournament, setTourname
         )}
       </div>
 
+      {/* Tournament Recovery Section */}
+      {isDeadlocked && (
+        <div style={{ 
+          padding: '20px', 
+          borderRadius: '8px', 
+          marginBottom: '30px',
+          backgroundColor: '#f8d7da',
+          border: '1px solid #f5c6cb'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+            <div>
+              <h4 style={{ margin: '0 0 5px 0', color: '#721c24' }}>🚨 Tournament Deadlock Detected</h4>
+              <p style={{ margin: '0', color: '#721c24' }}>
+                The tournament is stuck because some players finished while others are still in earlier rounds. Click to recover.
+              </p>
+            </div>
+            <button 
+              className="btn"
+              style={{ 
+                backgroundColor: '#dc3545', 
+                color: 'white', 
+                border: 'none',
+                padding: '12px 20px',
+                fontSize: '1em',
+                fontWeight: 'bold'
+              }}
+              onClick={handleRecoverTournament}
+            >
+              🔧 Recover Tournament
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Round Pairing Section */}
-      {pairingSuggestions.length > 0 && (
+      {pairingSuggestions.length > 0 && !isDeadlocked && (
         <div style={{ 
           padding: '20px', 
           borderRadius: '8px', 
