@@ -349,21 +349,53 @@ export const simulatePairingScenarios = (
   // Generate all possible outcome combinations (cartesian product)
   const possibleOutcomeCombinations = generateMatchOutcomes(currentMatches);
   
+  // Get player IDs involved in proposed pairings to exclude from future calculations
+  const proposedPlayerIds = new Set<number>();
+  proposedPairings.forEach(pairing => {
+    proposedPlayerIds.add(pairing.player1Id);
+    proposedPlayerIds.add(pairing.player2Id);
+  });
+
   // For each outcome scenario combination, check if viable pairings exist
   const viableScenarios = possibleOutcomeCombinations.map(outcomeCombo => {
     const simulatedTournament = simulateMatchOutcomes(tournament, outcomeCombo);
+    
+    // Exclude proposed players from future ready-to-pair pool since they'll be playing
     const futureReadyPlayers = simulatedTournament.players.filter(
-      p => getPlayerStatus(p, simulatedTournament) === 'ready-to-pair'
+      p => getPlayerStatus(p, simulatedTournament) === 'ready-to-pair' && !proposedPlayerIds.has(p.id)
     );
     
-    // Check if we can still make valid pairings after this outcome
-    const futurePairings = findLegalPairings(simulatedTournament);
+    // Check if we can still make valid pairings after this outcome (excluding proposed players)
+    // Create temporary matches for proposed pairings so getPlayerStatus sees them as 'playing'
+    // Calculate target round based on the proposed players (they should all be at the same round level)
+    const firstProposedPlayer = tournament.players.find(p => p.id === proposedPairings[0]?.player1Id);
+    const proposedTargetRound = firstProposedPlayer ? firstProposedPlayer.roundsPlayed + 1 : 1;
+    
+    const tempMatches = proposedPairings.map((pairing, index) => ({
+      id: -(index + 1), // Negative IDs to avoid conflicts
+      player1: pairing.player1Id,
+      player2: pairing.player2Id,
+      round: proposedTargetRound, // Round they would be playing in
+      player1Score: null,
+      player2Score: null,
+      completed: false,
+      isCurrentlyPlaying: true,
+      startTime: new Date(),
+      estimatedDuration: 45
+    }));
+    
+    const simulatedTournamentWithProposedExcluded = {
+      ...simulatedTournament,
+      matches: [...simulatedTournament.matches, ...tempMatches]
+    };
+    const futurePairings = findLegalPairings(simulatedTournamentWithProposedExcluded);
     const canPairAll = futurePairings.length * 2 >= futureReadyPlayers.length;
     
     return {
       outcome: outcomeCombo,
       viable: canPairAll,
-      futurePairings
+      futurePairings,
+      remainingPlayers: futureReadyPlayers.length // For debugging
     };
   });
   
@@ -535,8 +567,8 @@ export const initiatePairingProcess = (tournament: SwissTournament): {
   const suggestions = findLegalPairings(tournament);
   const scenario = simulatePairingScenarios(tournament, suggestions);
   
-  // Temporarily disable 100% enforcement for debugging - TODO: Re-enable after fixing simulation
-  const canProceed = suggestions.length > 0; // && scenario.probabilityOfSuccess === 1.0;
+  // Re-enabled 100% enforcement to prevent 0% probability pairings that cause deadlocks
+  const canProceed = suggestions.length > 0 && scenario.probabilityOfSuccess === 1.0;
   
   let message = '';
   if (canProceed && suggestions.length > 0) {
@@ -547,7 +579,10 @@ export const initiatePairingProcess = (tournament: SwissTournament): {
     message = "No legal pairings found - all players may have already played each other";
   }
   
-  return { suggestions, scenario, canProceed, message };
+  // Don't offer suggestions when probability is not 100% to prevent deadlocks
+  const safeSuggestions = canProceed ? suggestions : [];
+  
+  return { suggestions: safeSuggestions, scenario, canProceed, message };
 };
 
 // Implementation Helper

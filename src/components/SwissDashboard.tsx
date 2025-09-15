@@ -36,6 +36,12 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({ tournament, setTourname
   }, [tournament, autoRefresh]);
 
   const handleImplementAllPairings = () => {
+    // Check if we can proceed based on probability validation
+    if (!pairingResult?.canProceed) {
+      console.warn('Cannot implement pairings: probability of success < 100%');
+      return;
+    }
+    
     if (pairingSuggestions.length > 0) {
       // Use the proper implementPairing function for each suggestion to ensure validation
       let updatedTournament = { ...tournament };
@@ -129,6 +135,7 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({ tournament, setTourname
               const result = initiatePairingProcess(tournament);
               setPairingSuggestions(result.suggestions);
               setScenario(result.scenario);
+              setPairingResult({ canProceed: result.canProceed, message: result.message });
             }}
           >
             🔄 Refresh Pairings
@@ -243,7 +250,7 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({ tournament, setTourname
       )}
 
       {/* Round Pairing Section */}
-      {pairingSuggestions.length > 0 && !isDeadlocked && (
+      {pairingSuggestions.length > 0 && !isDeadlocked && pairingResult?.canProceed && (
         <div style={{ 
           padding: '20px', 
           borderRadius: '8px', 
@@ -261,7 +268,7 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({ tournament, setTourname
             <button 
               className="btn"
               style={{ 
-                backgroundColor: '#28a745', 
+                backgroundColor: pairingResult?.canProceed ? '#28a745' : '#6c757d', 
                 color: 'white', 
                 border: 'none',
                 padding: '12px 20px',
@@ -269,6 +276,7 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({ tournament, setTourname
                 fontWeight: 'bold'
               }}
               onClick={handleImplementAllPairings}
+              disabled={!pairingResult?.canProceed}
             >
               {getButtonText()}
             </button>
@@ -301,19 +309,24 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({ tournament, setTourname
                     </div>
                   </div>
                   <button 
-                    disabled={!!pairingResult && !pairingResult.canProceed}
+                    disabled={!pairingResult?.canProceed}
                     style={{ 
-                      backgroundColor: pairingResult && !pairingResult.canProceed ? '#6c757d' : '#17a2b8', 
+                      backgroundColor: !pairingResult?.canProceed ? '#6c757d' : '#17a2b8', 
                       color: 'white', 
                       border: 'none',
                       padding: '6px 12px',
                       borderRadius: '4px',
                       fontSize: '0.8em',
-                      cursor: pairingResult && !pairingResult.canProceed ? 'not-allowed' : 'pointer',
+                      cursor: !pairingResult?.canProceed ? 'not-allowed' : 'pointer',
                       alignSelf: 'flex-start',
-                      opacity: pairingResult && !pairingResult.canProceed ? 0.6 : 1
+                      opacity: !pairingResult?.canProceed ? 0.6 : 1
                     }}
                     onClick={() => {
+                      // Check if we can proceed based on probability validation
+                      if (!pairingResult?.canProceed) {
+                        console.warn('Cannot implement pairing: probability of success < 100%');
+                        return;
+                      }
                       const updatedTournament = implementPairing(tournament, suggestion);
                       setTournament(updatedTournament);
                     }}
