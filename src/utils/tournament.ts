@@ -224,3 +224,122 @@ export const updatePlayerRoundsPlayed = (tournament: Tournament, matchId: number
   
   return tournament;
 };
+
+// Swiss Tournament Pairing Algorithm
+export const generateSwissPairings = (tournament: Tournament): Tournament => {
+  console.log('generateSwissPairings: Starting pairing generation');
+  
+  // Get available players (not currently in active matches)
+  const activeMatches = tournament.matches.filter(m => !m.completed);
+  const playersInActiveMatches = new Set();
+  
+  activeMatches.forEach(match => {
+    playersInActiveMatches.add(match.player1);
+    playersInActiveMatches.add(match.player2);
+  });
+  
+  const availablePlayers = tournament.players.filter(player => 
+    !playersInActiveMatches.has(player.id) && 
+    getRoundsPlayed(player, tournament.matches) < tournament.numRounds
+  );
+  
+  console.log(`generateSwissPairings: ${availablePlayers.length} players available for pairing`);
+  console.log(`Available players: ${availablePlayers.map(p => p.name).join(', ')}`);
+  
+  if (availablePlayers.length < 2) {
+    console.log('generateSwissPairings: Not enough players available for pairing');
+    return tournament;
+  }
+  
+  // Group players by points (Swiss tournament principle)
+  const playersByPoints = new Map();
+  availablePlayers.forEach(player => {
+    const points = player.points;
+    if (!playersByPoints.has(points)) {
+      playersByPoints.set(points, []);
+    }
+    playersByPoints.get(points).push(player);
+  });
+  
+  // Sort point groups in descending order
+  const sortedPointGroups = Array.from(playersByPoints.entries()).sort((a, b) => b[0] - a[0]);
+  console.log(`generateSwissPairings: Point groups:`, sortedPointGroups.map(([points, players]) => 
+    `${points}pts: [${players.map((p: Player) => p.name).join(', ')}]`
+  ).join(', '));
+  
+  const newMatches = [];
+  const usedPlayers = new Set();
+  const currentRound = getCurrentRound(tournament) + (availablePlayers.length >= 2 ? 1 : 0);
+  let nextMatchId = Math.max(...tournament.matches.map(m => m.id), -1) + 1;
+  
+  // Create pairings within and between score groups
+  for (const [points, players] of sortedPointGroups) {
+    const availableInGroup = players.filter((p: Player) => !usedPlayers.has(p.id));
+    
+    // Pair within the same score group first
+    for (let i = 0; i < availableInGroup.length - 1; i += 2) {
+      const player1 = availableInGroup[i];
+      const player2 = availableInGroup[i + 1];
+      
+      // Check if they've played before
+      const havePlayedBefore = tournament.matches.some(match => 
+        (match.player1 === player1.id && match.player2 === player2.id) ||
+        (match.player1 === player2.id && match.player2 === player1.id)
+      );
+      
+      if (!havePlayedBefore) {
+        newMatches.push({
+          id: nextMatchId++,
+          player1: player1.id,
+          player2: player2.id,
+          round: currentRound,
+          player1Score: null,
+          player2Score: null,
+          completed: false
+        });
+        
+        usedPlayers.add(player1.id);
+        usedPlayers.add(player2.id);
+        console.log(`generateSwissPairings: Paired ${player1.name} vs ${player2.name} (both ${points} points)`);
+      }
+    }
+  }
+  
+  // Handle leftover players by pairing across score groups
+  const remainingPlayers = availablePlayers.filter(p => !usedPlayers.has(p.id));
+  console.log(`generateSwissPairings: ${remainingPlayers.length} players remaining for cross-group pairing`);
+  
+  for (let i = 0; i < remainingPlayers.length - 1; i += 2) {
+    const player1 = remainingPlayers[i];
+    const player2 = remainingPlayers[i + 1];
+    
+    const havePlayedBefore = tournament.matches.some(match => 
+      (match.player1 === player1.id && match.player2 === player2.id) ||
+      (match.player1 === player2.id && match.player2 === player1.id)
+    );
+    
+    if (!havePlayedBefore) {
+      newMatches.push({
+        id: nextMatchId++,
+        player1: player1.id,
+        player2: player2.id,
+        round: currentRound,
+        player1Score: null,
+        player2Score: null,
+        completed: false
+      });
+      
+      console.log(`generateSwissPairings: Cross-group paired ${player1.name} (${player1.points}pts) vs ${player2.name} (${player2.points}pts)`);
+    }
+  }
+  
+  console.log(`generateSwissPairings: Generated ${newMatches.length} new matches for round ${currentRound}`);
+  
+  const successRate = availablePlayers.length >= 2 ? (newMatches.length * 2 / availablePlayers.length * 100) : 0;
+  console.log(`generateSwissPairings: Pairing success rate: ${successRate.toFixed(1)}%`);
+  
+  return {
+    ...tournament,
+    matches: [...tournament.matches, ...newMatches]
+  };
+};
