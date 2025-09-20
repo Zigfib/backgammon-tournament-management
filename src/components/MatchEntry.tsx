@@ -1,7 +1,7 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Tournament } from '../types';
-import { updateMatchResult } from '../utils/tournament';
+import { updateMatchResult, getCurrentRound, getActiveRounds } from '../utils/tournament';
 
 interface MatchEntryProps {
   tournament: Tournament;
@@ -17,6 +17,15 @@ interface PendingScores {
 
 const MatchEntry: React.FC<MatchEntryProps> = ({ tournament, setTournament }) => {
   const [pendingScores, setPendingScores] = useState<PendingScores>({});
+
+  // Swiss Tournament Display Logic (must be before any early returns)
+  useEffect(() => {
+    const currentRound = getCurrentRound(tournament);
+    const maxRounds = tournament.numRounds;
+    const activeRounds = getActiveRounds(tournament);
+    
+    console.log(`Display logic debug: currentRound=${currentRound}, maxRounds=${maxRounds}, activeRounds=[${activeRounds.join(',')}]`);
+  }, [tournament]);
 
   const handleScoreChange = (matchId: number, player: 'player1' | 'player2', value: string) => {
     setPendingScores(prev => ({
@@ -119,9 +128,22 @@ const MatchEntry: React.FC<MatchEntryProps> = ({ tournament, setTournament }) =>
     );
   }
 
+  const currentRound = getCurrentRound(tournament);
+  const activeRounds = getActiveRounds(tournament);
+
   return (
     <div>
       <h2>Enter Match Results</h2>
+      
+      {/* Swiss Tournament Round Info */}
+      <div style={{ background: '#f3e5f5', padding: '15px', borderRadius: '8px', marginBottom: '20px' }}>
+        <h4 style={{ margin: '0 0 10px 0', color: '#7b1fa2' }}>🎯 Swiss Tournament Progress</h4>
+        <p style={{ margin: 0, fontSize: '14px', color: '#424242' }}>
+          <strong>Current Round: {currentRound}</strong> | <strong>Max Rounds: {tournament.numRounds}</strong>
+          {activeRounds.length > 0 && <span> | <strong>Active Rounds: [{activeRounds.join(', ')}]</strong></span>}
+        </p>
+      </div>
+      
       <div style={{ background: '#e3f2fd', padding: '15px', borderRadius: '8px', marginBottom: '20px' }}>
         <h4 style={{ margin: '0 0 10px 0', color: '#1976d2' }}>📊 ELO Rating System Active</h4>
         <p style={{ margin: 0, fontSize: '14px', color: '#424242' }}>
