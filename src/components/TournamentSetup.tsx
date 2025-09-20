@@ -73,7 +73,9 @@ const TournamentSetup: React.FC<TournamentSetupProps> = ({
         </div>
         
         <div className="input-group">
-          <label htmlFor="numRounds">Rounds per Matchup</label>
+          <label htmlFor="numRounds">
+            {tournament.tournamentType === 'rapid-swiss' ? 'Number of Rounds' : 'Rounds per Matchup'}
+          </label>
           <select 
             id="numRounds" 
             value={tournament.numRounds}

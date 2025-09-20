@@ -1,5 +1,6 @@
 import React from 'react';
 import { Tournament, Match } from '../types';
+import { generateSwissPairings, calculateStats } from '../utils/tournament';
 
 interface PlayerSetupProps {
   tournament: Tournament;
@@ -47,28 +48,6 @@ const PlayerSetup: React.FC<PlayerSetupProps> = ({
         goalDiff: 0
       }));
 
-      // Generate matches using the utility function
-      const matches: Match[] = [];
-      let matchId = 0;
-
-      for (let round = 1; round <= prev.numRounds; round++) {
-        for (let i = 0; i < updatedPlayers.length; i++) {
-          for (let j = i + 1; j < updatedPlayers.length; j++) {
-            matches.push({
-              id: matchId++,
-              player1: i,
-              player2: j,
-              round: round,
-              player1Score: null,
-              player2Score: null,
-              completed: false
-            });
-          }
-        }
-      }
-
-      console.log('Generated matches:', matches.length); // Debug log
-
       // Initialize results tracking using player array indices (not IDs)
       const results: Record<number, Record<number, any[]>> = {};
       for (let i = 0; i < updatedPlayers.length; i++) {
@@ -80,12 +59,49 @@ const PlayerSetup: React.FC<PlayerSetupProps> = ({
         }
       }
 
-      const newTournament = {
+      let newTournament = {
         ...prev,
         players: updatedPlayers,
-        matches,
+        matches: [],
         results
       };
+
+      // Generate matches based on tournament type
+      if (prev.tournamentType === 'rapid-swiss') {
+        // For rapid swiss, generate initial round 1 pairings
+        console.log('Generating initial Swiss pairings...');
+        
+        // Calculate stats for initial state (all players at 0 points)
+        const playersWithStats = calculateStats(updatedPlayers, []);
+        const tournamentWithStats = { ...newTournament, players: playersWithStats };
+        
+        // Generate first round Swiss pairings
+        newTournament = generateSwissPairings(tournamentWithStats);
+        console.log('Generated Swiss matches:', newTournament.matches.length);
+      } else {
+        // For round-robin, generate all matches
+        const matches: Match[] = [];
+        let matchId = 0;
+
+        for (let round = 1; round <= prev.numRounds; round++) {
+          for (let i = 0; i < updatedPlayers.length; i++) {
+            for (let j = i + 1; j < updatedPlayers.length; j++) {
+              matches.push({
+                id: matchId++,
+                player1: i,
+                player2: j,
+                round: round,
+                player1Score: null,
+                player2Score: null,
+                completed: false
+              });
+            }
+          }
+        }
+        
+        newTournament = { ...newTournament, matches };
+        console.log('Generated round-robin matches:', matches.length);
+      }
 
       console.log('Tournament with matches:', newTournament); // Debug log
       return newTournament;

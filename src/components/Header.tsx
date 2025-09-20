@@ -68,7 +68,7 @@ const Header: React.FC<HeaderProps> = ({ tournament, setTournament, setAppState 
   return (
     <div className="header">
       <h1>🎲 Backgammon Tournament Manager</h1>
-      <p>{tournament.name && tournament.name.trim() ? `${tournament.name} - Round-robin tournament with ELO ratings` : 'Round-robin tournament with ELO ratings'}</p>
+      <p>{tournament.name && tournament.name.trim() ? `${tournament.name} - ${tournament.tournamentType === 'rapid-swiss' ? 'Rapid Swiss tournament' : 'Round-robin tournament'} with ELO ratings` : `${tournament.tournamentType === 'rapid-swiss' ? 'Rapid Swiss tournament' : 'Round-robin tournament'} with ELO ratings`}</p>
       <div style={{ marginTop: '12px', display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
         <button className="btn" onClick={handleNewTournament}>🆕 New Tournament</button>
         <button className="btn" onClick={handleSave}>💾 Save Tournament</button>
