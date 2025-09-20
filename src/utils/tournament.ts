@@ -313,31 +313,49 @@ export const generateSwissPairings = (tournament: Tournament): Tournament => {
     }
   }
   
-  // Handle leftover players by pairing across score groups
+  // Handle leftover players by pairing across score groups (respecting tolerance)
   const remainingPlayers = availablePlayers.filter(p => !usedPlayers.has(p.id));
-  console.log(`generateSwissPairings: ${remainingPlayers.length} players remaining for cross-group pairing`);
+  console.log(`generateSwissPairings: ${remainingPlayers.length} players remaining for cross-group pairing (tolerance: ${tournament.swissTolerance})`);
   
-  for (let i = 0; i < remainingPlayers.length - 1; i += 2) {
-    const player1 = remainingPlayers[i];
-    const player2 = remainingPlayers[i + 1];
+  // Sort remaining players by points for tolerance-based pairing
+  const sortedRemainingPlayers = remainingPlayers.sort((a, b) => b.points - a.points);
+  
+  for (let i = 0; i < sortedRemainingPlayers.length; i++) {
+    if (usedPlayers.has(sortedRemainingPlayers[i].id)) continue;
     
-    const havePlayedBefore = tournament.matches.some(match => 
-      (match.player1 === player1.id && match.player2 === player2.id) ||
-      (match.player1 === player2.id && match.player2 === player1.id)
-    );
+    const player1 = sortedRemainingPlayers[i];
     
-    if (!havePlayedBefore) {
-      newMatches.push({
-        id: nextMatchId++,
-        player1: player1.id,
-        player2: player2.id,
-        round: currentRound,
-        player1Score: null,
-        player2Score: null,
-        completed: false
-      });
+    // Find a suitable opponent within tolerance
+    for (let j = i + 1; j < sortedRemainingPlayers.length; j++) {
+      if (usedPlayers.has(sortedRemainingPlayers[j].id)) continue;
       
-      console.log(`generateSwissPairings: Cross-group paired ${player1.name} (${player1.points}pts) vs ${player2.name} (${player2.points}pts)`);
+      const player2 = sortedRemainingPlayers[j];
+      const pointDifference = Math.abs(player1.points - player2.points);
+      
+      // Check if within tolerance and haven't played before
+      if (pointDifference <= tournament.swissTolerance) {
+        const havePlayedBefore = tournament.matches.some(match => 
+          (match.player1 === player1.id && match.player2 === player2.id) ||
+          (match.player1 === player2.id && match.player2 === player1.id)
+        );
+        
+        if (!havePlayedBefore) {
+          newMatches.push({
+            id: nextMatchId++,
+            player1: player1.id,
+            player2: player2.id,
+            round: currentRound,
+            player1Score: null,
+            player2Score: null,
+            completed: false
+          });
+          
+          usedPlayers.add(player1.id);
+          usedPlayers.add(player2.id);
+          console.log(`generateSwissPairings: Cross-group paired ${player1.name} (${player1.points}pts) vs ${player2.name} (${player2.points}pts)`);
+          break; // Found a pairing for player1, move to next
+        }
+      }
     }
   }
   
