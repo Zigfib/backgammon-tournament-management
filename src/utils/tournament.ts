@@ -212,9 +212,9 @@ export const updateMatchResult = (tournament: Tournament, matchId: number, playe
     results: updatedResults
   };
   
-  // If a match was just completed, trigger Swiss pairing generation
-  if (updatedMatch.completed && updatedMatch.player1Score !== null && updatedMatch.player2Score !== null) {
-    console.log('Match completed, triggering Swiss pairing generation...');
+  // If a match was just completed AND this is a rapid swiss tournament, trigger Swiss pairing generation
+  if (updatedMatch.completed && updatedMatch.player1Score !== null && updatedMatch.player2Score !== null && updatedTournament.tournamentType === 'rapid-swiss') {
+    console.log('Match completed in rapid swiss tournament, triggering Swiss pairing generation...');
     return generateSwissPairings(updatedTournament);
   }
   

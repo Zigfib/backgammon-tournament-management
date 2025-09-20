@@ -1,4 +1,3 @@
-
 export interface Player {
   id: number;
   name: string;
@@ -42,10 +41,14 @@ export interface Tournament {
   maxPoints: number;
   matches: Match[];
   results: Record<number, Record<number, MatchResult[]>>;
-  rankingSystem: 'standard' | 'hybrid';
-  scoreEntryMode: 'admin-only' | 'player-entry' | 'dual-confirm' | 'open-access';
+  rankingSystem: "standard" | "hybrid";
+  scoreEntryMode:
+    | "admin-only"
+    | "player-entry"
+    | "dual-confirm"
+    | "open-access";
   isAdmin: boolean;
-  tournamentType?: 'round-robin' | 'rapid-swiss';
+  tournamentType: "round-robin" | "rapid-swiss";
 }
 
 export interface Tiebreakers {
@@ -56,7 +59,7 @@ export interface Tiebreakers {
 
 export interface PlayerWithTiebreakers extends Player {
   tiebreakers: Tiebreakers;
-  rankMethod?: 'points' | 'elo';
+  rankMethod?: "points" | "elo";
   eloChange?: number;
 }
 
@@ -68,7 +71,11 @@ export interface EloCalculation {
 }
 
 // Swiss Tournament Types
-export type SwissPlayerStatus = 'waiting' | 'ready-to-pair' | 'playing' | 'finished';
+export type SwissPlayerStatus =
+  | "waiting"
+  | "ready-to-pair"
+  | "playing"
+  | "finished";
 
 export interface SwissPlayer extends Player {
   status: SwissPlayerStatus;
@@ -111,8 +118,9 @@ export interface PairingSuggestion {
   reason: string;
 }
 
-export interface SwissTournament extends Omit<Tournament, 'players' | 'matches'> {
-  tournamentType: 'rapid-swiss';
+export interface SwissTournament
+  extends Omit<Tournament, "players" | "matches"> {
+  tournamentType: "rapid-swiss";
   players: SwissPlayer[];
   matches: SwissMatch[];
   currentRound: number;
