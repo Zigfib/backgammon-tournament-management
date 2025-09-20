@@ -247,3 +247,43 @@ export const calculateStats = (players: Player[], matches: Match[]): Player[] =>
   
   return updatedPlayers;
 };
+
+// Swiss Tournament Functions
+export const getCurrentRound = (tournament: Tournament): number => {
+  const playingMatches = tournament.matches.filter(match => !match.completed);
+  const rounds = playingMatches.map(match => match.round);
+  const currentRound = rounds.length > 0 ? Math.max(...rounds) : tournament.numRounds;
+  
+  console.log(`getCurrentRound debug: playingMatches=${playingMatches.length}, rounds=[${rounds.join(',')}], tournament.currentRound=${currentRound}`);
+  
+  return currentRound;
+};
+
+export const getActiveRounds = (tournament: Tournament): number[] => {
+  const playingMatches = tournament.matches.filter(match => !match.completed);
+  const roundsSet = new Set(playingMatches.map(match => match.round));
+  const rounds = Array.from(roundsSet).sort();
+  return rounds;
+};
+
+export const getRoundsPlayed = (player: Player, matches: Match[]): number => {
+  return matches.filter(match => 
+    (match.player1 === player.id || match.player2 === player.id) && match.completed
+  ).length;
+};
+
+export const updatePlayerRoundsPlayed = (tournament: Tournament, matchId: number): Tournament => {
+  const match = tournament.matches.find(m => m.id === matchId);
+  if (!match || !match.completed) return tournament;
+  
+  const player1 = tournament.players[match.player1];
+  const player2 = tournament.players[match.player2];
+  
+  const player1RoundsPlayed = getRoundsPlayed(player1, tournament.matches);
+  const player2RoundsPlayed = getRoundsPlayed(player2, tournament.matches);
+  
+  console.log(`Match completion: Player ${player1.name} roundsPlayed: ${player1RoundsPlayed - 1} -> ${player1RoundsPlayed}, currentRound -> ${match.round}`);
+  console.log(`Match completion: Player ${player2.name} roundsPlayed: ${player2RoundsPlayed - 1} -> ${player2RoundsPlayed}, currentRound -> ${match.round}`);
+  
+  return tournament;
+};
