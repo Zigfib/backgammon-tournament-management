@@ -215,7 +215,12 @@ export const updateMatchResult = (tournament: Tournament, matchId: number, playe
   // If a match was just completed AND this is a rapid swiss tournament, trigger Swiss pairing generation
   if (updatedMatch.completed && updatedMatch.player1Score !== null && updatedMatch.player2Score !== null && updatedTournament.tournamentType === 'rapid-swiss') {
     console.log('Match completed in rapid swiss tournament, triggering Swiss pairing generation...');
-    return generateSwissPairings(updatedTournament);
+    
+    // CRITICAL: Recalculate player stats (including points) before Swiss pairing
+    const playersWithStats = calculateStats(updatedTournament.players, updatedTournament.matches);
+    const tournamentWithStats = { ...updatedTournament, players: playersWithStats };
+    
+    return generateSwissPairings(tournamentWithStats);
   }
   
   return updatedTournament;
@@ -340,7 +345,12 @@ export const generateSwissPairings = (tournament: Tournament): Tournament => {
   
   const newMatches = [];
   const usedPlayers = new Set();
-  const currentRound = getCurrentRound(tournament) + (availablePlayers.length >= 2 ? 1 : 0);
+  
+  // FIXED: Proper round calculation for Swiss tournaments
+  const maxRound = tournament.matches.length ? Math.max(...tournament.matches.map(m => m.round)) : 0;
+  const hasOpenInMaxRound = tournament.matches.some(m => m.round === maxRound && !m.completed);
+  const nextRound = hasOpenInMaxRound ? maxRound : maxRound + 1;
+  
   let nextMatchId = Math.max(...tournament.matches.map(m => m.id), -1) + 1;
   
   // Create pairings within and between score groups
@@ -363,7 +373,7 @@ export const generateSwissPairings = (tournament: Tournament): Tournament => {
           id: nextMatchId++,
           player1: player1.id,
           player2: player2.id,
-          round: currentRound,
+          round: nextRound,
           player1Score: null,
           player2Score: null,
           completed: false
@@ -407,7 +417,7 @@ export const generateSwissPairings = (tournament: Tournament): Tournament => {
             id: nextMatchId++,
             player1: player1.id,
             player2: player2.id,
-            round: currentRound,
+            round: nextRound,
             player1Score: null,
             player2Score: null,
             completed: false
@@ -422,7 +432,7 @@ export const generateSwissPairings = (tournament: Tournament): Tournament => {
     }
   }
   
-  console.log(`generateSwissPairings: Generated ${newMatches.length} new matches for round ${currentRound}`);
+  console.log(`generateSwissPairings: Generated ${newMatches.length} new matches for round ${nextRound}`);
   
   const successRate = availablePlayers.length >= 2 ? (newMatches.length * 2 / availablePlayers.length * 100) : 0;
   console.log(`generateSwissPairings: Pairing success rate: ${successRate.toFixed(1)}%`);

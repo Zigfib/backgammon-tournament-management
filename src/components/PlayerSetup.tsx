@@ -1,6 +1,6 @@
-import React from 'react';
-import { Tournament, Match } from '../types';
-import { createSwissTournament } from '../utils/swiss';
+import React from "react";
+import { Tournament, Match } from "../types";
+import { generateSwissPairings, calculateStats } from "../utils/tournament";
 
 interface PlayerSetupProps {
   tournament: Tournament;
@@ -13,16 +13,20 @@ const PlayerSetup: React.FC<PlayerSetupProps> = ({
   tournament,
   setTournament,
   onBack,
-  onStartTournament
+  onStartTournament,
 }) => {
   const handlePlayerChange = (index: number, field: string, value: string) => {
-    setTournament(prev => ({
+    setTournament((prev) => ({
       ...prev,
       players: prev.players.map((player, i) =>
         i === index
-          ? { ...player, [field]: field === 'startingElo' ? parseInt(value) || 1500 : value }
+          ? {
+              ...player,
+              [field]:
+                field === "startingElo" ? parseInt(value) || 1500 : value,
+            }
           : player
-      )
+      ),
     }));
   };
 
@@ -30,61 +34,27 @@ const PlayerSetup: React.FC<PlayerSetupProps> = ({
     // Validate all players have names and ELO ratings
     for (const player of tournament.players) {
       if (!player.name.trim()) {
-        alert('Please enter names for all players');
+        alert("Please enter names for all players");
         return;
       }
-      if (!player.startingElo || player.startingElo < 100 || player.startingElo > 3000) {
-        alert('Please enter valid ELO ratings for all players (100-3000)');
+      if (
+        !player.startingElo ||
+        player.startingElo < 100 ||
+        player.startingElo > 3000
+      ) {
+        alert("Please enter valid ELO ratings for all players (100-3000)");
         return;
       }
     }
 
-    setTournament(prev => {
-      const updatedPlayers = prev.players.map(player => ({
+    setTournament((prev) => {
+      const updatedPlayers = prev.players.map((player) => ({
         ...player,
         currentElo: player.startingElo,
         matches: 0,
         points: 0,
-        goalDiff: 0
+        goalDiff: 0,
       }));
-
-      // Check if this is a Swiss tournament
-      if (prev.tournamentType === 'rapid-swiss') {
-        // Enforce Swiss rounds limit (3-5)
-        const clampedRounds = Math.max(3, Math.min(5, prev.numRounds));
-        
-        // Create Swiss tournament - no pre-generated matches
-        const swissTournament = createSwissTournament({
-          ...prev,
-          players: updatedPlayers,
-          numRounds: clampedRounds
-        }, clampedRounds, (prev as any).allowPointDifference || 0); // Use user-configured point difference tolerance
-        
-        console.log('Created Swiss tournament:', swissTournament);
-        return swissTournament as any; // Type assertion needed due to interface differences
-      }
-
-      // Original round-robin logic
-      const matches: Match[] = [];
-      let matchId = 0;
-
-      for (let round = 1; round <= prev.numRounds; round++) {
-        for (let i = 0; i < updatedPlayers.length; i++) {
-          for (let j = i + 1; j < updatedPlayers.length; j++) {
-            matches.push({
-              id: matchId++,
-              player1: i,
-              player2: j,
-              round: round,
-              player1Score: null,
-              player2Score: null,
-              completed: false
-            });
-          }
-        }
-      }
-
-      console.log('Generated matches:', matches.length); // Debug log
 
       // Initialize results tracking using player array indices (not IDs)
       const results: Record<number, Record<number, any[]>> = {};
@@ -97,14 +67,54 @@ const PlayerSetup: React.FC<PlayerSetupProps> = ({
         }
       }
 
-      const newTournament = {
+      let newTournament = {
         ...prev,
         players: updatedPlayers,
-        matches,
-        results
+        matches: [],
+        results,
       };
 
-      console.log('Tournament with matches:', newTournament); // Debug log
+      // Generate matches based on tournament type
+      if (prev.tournamentType === "rapid-swiss") {
+        // For rapid swiss, generate initial round 1 pairings
+        console.log("Generating initial Swiss pairings...");
+
+        // Calculate stats for initial state (all players at 0 points)
+        const playersWithStats = calculateStats(updatedPlayers, []);
+        const tournamentWithStats = {
+          ...newTournament,
+          players: playersWithStats,
+        };
+
+        // Generate first round Swiss pairings
+        newTournament = generateSwissPairings(tournamentWithStats);
+        console.log("Generated Swiss matches:", newTournament.matches.length);
+      } else {
+        // For round-robin, generate all matches
+        const matches: Match[] = [];
+        let matchId = 0;
+
+        for (let round = 1; round <= prev.numRounds; round++) {
+          for (let i = 0; i < updatedPlayers.length; i++) {
+            for (let j = i + 1; j < updatedPlayers.length; j++) {
+              matches.push({
+                id: matchId++,
+                player1: i,
+                player2: j,
+                round: round,
+                player1Score: null,
+                player2Score: null,
+                completed: false,
+              });
+            }
+          }
+        }
+
+        newTournament = { ...newTournament, matches };
+        console.log("Generated round-robin matches:", matches.length);
+      }
+
+      console.log("Tournament with matches:", newTournament); // Debug log
       return newTournament;
     });
 
@@ -113,9 +123,20 @@ const PlayerSetup: React.FC<PlayerSetupProps> = ({
 
   return (
     <div className="setup-panel">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "20px",
+        }}
+      >
         <h2>Player Information</h2>
-        <button className="btn" style={{ background: '#6c757d' }} onClick={onBack}>
+        <button
+          className="btn"
+          style={{ background: "#6c757d" }}
+          onClick={onBack}
+        >
           ← Back to Tournament Setup
         </button>
       </div>
@@ -130,7 +151,9 @@ const PlayerSetup: React.FC<PlayerSetupProps> = ({
               <input
                 type="text"
                 value={player.name}
-                onChange={(e) => handlePlayerChange(index, 'name', e.target.value)}
+                onChange={(e) =>
+                  handlePlayerChange(index, "name", e.target.value)
+                }
                 required
               />
             </div>
@@ -143,10 +166,17 @@ const PlayerSetup: React.FC<PlayerSetupProps> = ({
                   value={player.startingElo}
                   min="100"
                   max="3000"
-                  onChange={(e) => handlePlayerChange(index, 'startingElo', e.target.value)}
+                  onChange={(e) =>
+                    handlePlayerChange(index, "startingElo", e.target.value)
+                  }
                   required
                 />
-                <div className="elo-help" title="Typical range: 1000-2500. New players: ~1200-1500">?</div>
+                <div
+                  className="elo-help"
+                  title="Typical range: 1000-2500. New players: ~1200-1500"
+                >
+                  ?
+                </div>
               </div>
             </div>
 
@@ -156,7 +186,9 @@ const PlayerSetup: React.FC<PlayerSetupProps> = ({
                 type="email"
                 value={player.email}
                 placeholder={`player${index + 1}@email.com`}
-                onChange={(e) => handlePlayerChange(index, 'email', e.target.value)}
+                onChange={(e) =>
+                  handlePlayerChange(index, "email", e.target.value)
+                }
               />
             </div>
 
@@ -166,14 +198,16 @@ const PlayerSetup: React.FC<PlayerSetupProps> = ({
                 type="tel"
                 value={player.phone}
                 placeholder="+1 (555) 123-4567"
-                onChange={(e) => handlePlayerChange(index, 'phone', e.target.value)}
+                onChange={(e) =>
+                  handlePlayerChange(index, "phone", e.target.value)
+                }
               />
             </div>
           </div>
         ))}
       </div>
 
-      <div style={{ marginTop: '20px', textAlign: 'center' }}>
+      <div style={{ marginTop: "20px", textAlign: "center" }}>
         <button className="btn btn-success" onClick={handleStartTournament}>
           Start Tournament
         </button>
