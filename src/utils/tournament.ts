@@ -205,12 +205,20 @@ export const updateMatchResult = (tournament: Tournament, matchId: number, playe
     updatedPlayers[match.player2].currentElo = prevPlayer2ELO;
   }
   
-  return {
+  const updatedTournament = {
     ...tournament,
     matches: tournament.matches.map(m => m.id === matchId ? updatedMatch : m),
     players: updatedPlayers,
     results: updatedResults
   };
+  
+  // If a match was just completed, trigger Swiss pairing generation
+  if (updatedMatch.completed && updatedMatch.player1Score !== null && updatedMatch.player2Score !== null) {
+    console.log('Match completed, triggering Swiss pairing generation...');
+    return generateSwissPairings(updatedTournament);
+  }
+  
+  return updatedTournament;
 };
 
 export const calculateStats = (players: Player[], matches: Match[]): Player[] => {
