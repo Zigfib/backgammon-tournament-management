@@ -19,7 +19,8 @@ const App: React.FC = () => {
     results: {},
     rankingSystem: 'standard',
     scoreEntryMode: 'player-entry',
-    isAdmin: false
+    isAdmin: false,
+    tournamentType: 'round-robin'
   });
 
   const handleGoToPlayerSetup = (numPlayers: number) => {
