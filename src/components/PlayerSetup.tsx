@@ -67,10 +67,10 @@ const PlayerSetup: React.FC<PlayerSetupProps> = ({
         }
       }
 
-      let newTournament = {
+      let newTournament: Tournament = {
         ...prev,
         players: updatedPlayers,
-        matches: [],
+        matches: [] as Match[],
         results,
       };
 
