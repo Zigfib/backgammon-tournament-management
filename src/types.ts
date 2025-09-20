@@ -46,6 +46,7 @@ export interface Tournament {
   scoreEntryMode: 'admin-only' | 'player-entry' | 'dual-confirm' | 'open-access';
   isAdmin: boolean;
   tournamentType: 'round-robin' | 'rapid-swiss';
+  swissTolerance: 0 | 1;
 }
 
 export interface Tiebreakers {

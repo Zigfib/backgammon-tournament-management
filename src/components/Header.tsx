@@ -53,7 +53,8 @@ const Header: React.FC<HeaderProps> = ({ tournament, setTournament, setAppState 
       rankingSystem: 'standard',
       scoreEntryMode: 'player-entry',
       isAdmin: false,
-      tournamentType: 'round-robin'
+      tournamentType: 'round-robin',
+      swissTolerance: 1
     });
     
     // Go back to setup

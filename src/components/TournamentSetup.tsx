@@ -109,6 +109,20 @@ const TournamentSetup: React.FC<TournamentSetupProps> = ({
           </select>
         </div>
 
+        {tournament.tournamentType === 'rapid-swiss' && (
+          <div className="input-group">
+            <label htmlFor="swissTolerance">Swiss Pairing Tolerance</label>
+            <select 
+              id="swissTolerance" 
+              value={tournament.swissTolerance}
+              onChange={(e) => handleInputChange('swissTolerance', parseInt(e.target.value) as 0 | 1)}
+            >
+              <option value="0">0 points - Only pair players with exact same score</option>
+              <option value="1">1 point - Allow pairing players within 1 point difference</option>
+            </select>
+          </div>
+        )}
+
         <div className="input-group">
           <label htmlFor="rankingSystem">Ranking System</label>
           <select 
