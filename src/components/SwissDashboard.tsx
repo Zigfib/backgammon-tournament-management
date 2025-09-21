@@ -1,417 +1,1135 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  SwissTournament, 
-  PairingSuggestion, 
-  PairingScenario
-} from '../types';
-import { 
-  initiatePairingProcess, 
-  getPlayerStatus,
-  implementPairing,
-  getCurrentRound,
-  detectTournamentDeadlock,
-  recoverTournamentFromDeadlock
-} from '../utils/swiss';
+import React, { useState } from "react";
+import { Tournament, Player } from "../types";
+import {
+  getRoundsPlayed,
+  getPlayerRecord,
+  getNextRound,
+  getAvailablePlayers,
+  getProposedSwissPairings,
+  updateMatchResult,
+  havePlayedBefore,
+} from "../utils/tournament";
+import { calculateStandardRanking } from "../utils/ranking";
 
 interface SwissDashboardProps {
-  tournament: SwissTournament;
-  setTournament: React.Dispatch<React.SetStateAction<SwissTournament>>;
+  tournament: Tournament;
+  setTournament: React.Dispatch<React.SetStateAction<Tournament>>;
 }
 
-const SwissDashboard: React.FC<SwissDashboardProps> = ({ tournament, setTournament }) => {
-  const [pairingSuggestions, setPairingSuggestions] = useState<PairingSuggestion[]>([]);
-  const [scenario, setScenario] = useState<PairingScenario | null>(null);
-  const [autoRefresh, setAutoRefresh] = useState(true);
+const SwissDashboard: React.FC<SwissDashboardProps> = ({
+  tournament,
+  setTournament,
+}) => {
+  // State for score input
+  const [editingMatch, setEditingMatch] = useState<number | null>(null);
+  const [pendingScores, setPendingScores] = useState<{
+    [key: number]: { player1Score: string; player2Score: string };
+  }>({});
 
-  const [pairingResult, setPairingResult] = useState<{ canProceed: boolean; message: string } | null>(null);
+  // State for manual pairing
+  const [showManualPairing, setShowManualPairing] = useState(false);
+  const [manualPlayer1, setManualPlayer1] = useState<number | null>(null);
+  const [manualPlayer2, setManualPlayer2] = useState<number | null>(null);
 
-  // Update pairing suggestions when tournament changes
-  useEffect(() => {
-    if (autoRefresh) {
-      const result = initiatePairingProcess(tournament);
-      setPairingSuggestions(result.suggestions);
-      setScenario(result.scenario);
-      setPairingResult({ canProceed: result.canProceed, message: result.message });
-    }
-  }, [tournament, autoRefresh]);
+  // Get data for the dashboard
+  const activeMatches = tournament.matches.filter((m) => !m.completed);
+  const availablePlayers = getAvailablePlayers(tournament);
+  const proposedPairings = getProposedSwissPairings(tournament);
+  const nextRound = getNextRound(tournament);
+  const completedMatches = tournament.matches.filter((m) => m.completed).length;
 
-  const handleImplementAllPairings = () => {
-    // Check if we can proceed based on probability validation
-    if (!pairingResult?.canProceed) {
-      console.warn('Cannot implement pairings: probability of success < 100%');
+  // Handle applying proposed pairings
+  const handleApplyPairings = () => {
+    if (proposedPairings.length === 0) {
+      alert("No pairings available to apply");
       return;
     }
-    
-    if (pairingSuggestions.length > 0) {
-      // Use the proper implementPairing function for each suggestion to ensure validation
-      let updatedTournament = { ...tournament };
-      
-      // Implement each pairing suggestion using the validated implementPairing function
-      for (const suggestion of pairingSuggestions) {
-        updatedTournament = implementPairing(updatedTournament, suggestion);
-      }
-      
-      setTournament(updatedTournament);
+
+    // Apply the exact proposed pairings that were displayed
+    const nextMatchId =
+      Math.max(...tournament.matches.map((m) => m.id), -1) + 1;
+    const newMatches = proposedPairings.map((pairing, index) => ({
+      id: nextMatchId + index,
+      player1: pairing.player1Id,
+      player2: pairing.player2Id,
+      round: pairing.round,
+      player1Score: null,
+      player2Score: null,
+      completed: false,
+    }));
+
+    setTournament((prev) => ({
+      ...prev,
+      matches: [...prev.matches, ...newMatches],
+    }));
+  };
+
+  // Score input handlers
+  const handleMatchClick = (matchId: number) => {
+    setEditingMatch(matchId);
+    if (!pendingScores[matchId]) {
+      setPendingScores((prev) => ({
+        ...prev,
+        [matchId]: { player1Score: "", player2Score: "" },
+      }));
     }
   };
 
-  const handleRecoverTournament = () => {
-    console.log('🚨 User initiated tournament recovery');
-    const recoveredTournament = recoverTournamentFromDeadlock(tournament);
-    setTournament(recoveredTournament);
+  const handleScoreChange = (
+    matchId: number,
+    player: "player1" | "player2",
+    value: string
+  ) => {
+    setPendingScores((prev) => ({
+      ...prev,
+      [matchId]: {
+        ...prev[matchId],
+        [player + "Score"]: value,
+      },
+    }));
   };
 
-  // Check if tournament is in deadlock state
-  const isDeadlocked = detectTournamentDeadlock(tournament);
+  const handleAutoComplete = (
+    matchId: number,
+    player: "player1" | "player2"
+  ) => {
+    const scores = pendingScores[matchId];
+    if (!scores) return;
 
-  const getStatusColor = (status: string): string => {
-    switch (status) {
-      case 'ready-to-pair': return '#28a745'; // Green
-      case 'playing': return '#ffc107'; // Yellow
-      case 'finished': return '#6c757d'; // Gray
-      case 'waiting': return '#17a2b8'; // Blue
-      default: return '#dee2e6';
+    const currentScore =
+      player === "player1" ? scores.player1Score : scores.player2Score;
+    const otherScore =
+      player === "player1" ? scores.player2Score : scores.player1Score;
+
+    // If the OTHER player has a score less than max and the CURRENT field is empty, auto-fill current field with max
+    if (
+      otherScore &&
+      parseInt(otherScore) < tournament.maxPoints &&
+      !currentScore
+    ) {
+      setPendingScores((prev) => ({
+        ...prev,
+        [matchId]: {
+          ...prev[matchId],
+          [player + "Score"]: tournament.maxPoints.toString(),
+        },
+      }));
     }
   };
 
-  const getStatusIcon = (status: string): string => {
-    switch (status) {
-      case 'ready-to-pair': return '🟢';
-      case 'playing': return '🟡';
-      case 'finished': return '⚫';
-      case 'waiting': return '🔵';
-      default: return '⚪';
-    }
+  const isValidScore = (matchId: number): boolean => {
+    const scores = pendingScores[matchId];
+    if (!scores || !scores.player1Score || !scores.player2Score) return false;
+
+    const p1Score = parseInt(scores.player1Score);
+    const p2Score = parseInt(scores.player2Score);
+
+    // Check if scores are valid numbers
+    if (isNaN(p1Score) || isNaN(p2Score)) return false;
+
+    // Check if scores are within valid range
+    if (
+      p1Score < 0 ||
+      p2Score < 0 ||
+      p1Score > tournament.maxPoints ||
+      p2Score > tournament.maxPoints
+    )
+      return false;
+
+    // Prevent 0-0 scores
+    if (p1Score === 0 && p2Score === 0) return false;
+
+    // One score must be the maximum, the other must be lower
+    return (
+      (p1Score === tournament.maxPoints && p2Score < tournament.maxPoints) ||
+      (p2Score === tournament.maxPoints && p1Score < tournament.maxPoints)
+    );
   };
 
-  // Fixed: For Swiss tournaments, completed matches should not be considered as currently playing
-  const completedMatches = tournament.matches.filter(m => m.completed);
-  const currentMatches = tournament.matches.filter(m => !m.completed && ('isCurrentlyPlaying' in m ? (m as any).isCurrentlyPlaying : false));
-  
-  // Update player statuses dynamically
-  const playersWithStatus = tournament.players.map(player => ({
-    ...player,
-    status: getPlayerStatus(player, tournament)
-  }));
-
-  // Determine if we're starting a new round or adding matches mid-round
-  const isNewRound = currentMatches.length === 0 && completedMatches.length > 0;
-  const isFirstRound = completedMatches.length === 0;
-  
-  const getButtonText = () => {
-    const matchCount = pairingSuggestions.length;
-    
-    if (isFirstRound) {
-      return `🚀 Start Tournament (${matchCount} match${matchCount > 1 ? 'es' : ''})`;
-    } else if (isNewRound) {
-      const nextRound = Math.max(...completedMatches.map(m => m.round)) + 1;
-      return `🚀 Start Round ${nextRound} (${matchCount} match${matchCount > 1 ? 'es' : ''})`;
-    } else {
-      return `▶️ Start Match${matchCount > 1 ? 'es' : ''} (${matchCount})`;
+  const handleSubmitScore = (matchId: number) => {
+    if (!isValidScore(matchId)) {
+      alert("Please enter valid scores");
+      return;
     }
+
+    const scores = pendingScores[matchId];
+    const updatedTournament = updateMatchResult(
+      tournament,
+      matchId,
+      scores.player1Score,
+      scores.player2Score
+    );
+
+    setTournament(updatedTournament);
+    setEditingMatch(null);
+    setPendingScores((prev) => {
+      const newScores = { ...prev };
+      delete newScores[matchId];
+      return newScores;
+    });
   };
 
-  const statusCounts = playersWithStatus.reduce((counts, player) => {
-    counts[player.status] = (counts[player.status] || 0) + 1;
-    return counts;
-  }, {} as Record<string, number>);
+  const handleCancelScore = () => {
+    setEditingMatch(null);
+    setPendingScores((prev) => {
+      const newScores = { ...prev };
+      if (editingMatch) delete newScores[editingMatch];
+      return newScores;
+    });
+  };
+
+  // Manual pairing handlers
+  const handleManualPairSubmit = () => {
+    if (manualPlayer1 === null || manualPlayer2 === null) {
+      alert("Please select both players");
+      return;
+    }
+
+    if (manualPlayer1 === manualPlayer2) {
+      alert("Cannot pair a player with themselves");
+      return;
+    }
+
+    // Create new match
+    const nextMatchId =
+      Math.max(...tournament.matches.map((m) => m.id), -1) + 1;
+    const newMatch = {
+      id: nextMatchId,
+      player1: manualPlayer1,
+      player2: manualPlayer2,
+      round: nextRound,
+      player1Score: null,
+      player2Score: null,
+      completed: false,
+    };
+
+    setTournament((prev) => ({
+      ...prev,
+      matches: [...prev.matches, newMatch],
+    }));
+
+    // Reset manual pairing state
+    setShowManualPairing(false);
+    setManualPlayer1(null);
+    setManualPlayer2(null);
+  };
+
+  const handleManualPairCancel = () => {
+    setShowManualPairing(false);
+    setManualPlayer1(null);
+    setManualPlayer2(null);
+  };
+
+  // Get player status for the bottom table
+  const getPlayerStatus = (player: Player): string => {
+    const playerInActiveMatch = activeMatches.find(
+      (m) => m.player1 === player.id || m.player2 === player.id
+    );
+
+    if (playerInActiveMatch) {
+      return "Playing";
+    }
+
+    const roundsPlayed = getRoundsPlayed(player, tournament.matches);
+    if (roundsPlayed >= tournament.numRounds) {
+      return "Finished";
+    }
+
+    return "Available";
+  };
 
   return (
-    <div style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <h2>🏆 Rapid Swiss Tournament Dashboard</h2>
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-            <input 
-              type="checkbox" 
-              checked={autoRefresh}
-              onChange={(e) => setAutoRefresh(e.target.checked)}
-            />
-            Auto-refresh pairings
-          </label>
-          <button 
-            className="btn"
-            onClick={() => {
-              const result = initiatePairingProcess(tournament);
-              setPairingSuggestions(result.suggestions);
-              setScenario(result.scenario);
-              setPairingResult({ canProceed: result.canProceed, message: result.message });
-            }}
-          >
-            🔄 Refresh Pairings
-          </button>
-        </div>
-      </div>
-
-      {/* Tournament Status Overview */}
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
-        gap: '15px', 
-        marginBottom: '30px' 
-      }}>
-        <div style={{ 
-          background: '#f8f9fa', 
-          padding: '15px', 
-          borderRadius: '8px', 
-          border: '1px solid #dee2e6' 
-        }}>
-          <h4 style={{ margin: '0 0 10px 0', color: '#495057' }}>Tournament Progress</h4>
-          <p><strong>Round:</strong> {getCurrentRound(tournament)} / {tournament.maxRounds} 
-            {(() => {
-              const currentRound = getCurrentRound(tournament);
-              const activeRounds = Array.from(new Set(tournament.matches
-                .filter(m => !m.completed && m.isCurrentlyPlaying)
-                .map(m => m.round)));
-              
-              console.log(`Display logic debug: currentRound=${currentRound}, maxRounds=${tournament.maxRounds}, activeRounds=[${activeRounds.join(',')}]`);
-              
-              // Check if tournament is actually complete (all players finished all rounds)
-              const allPlayersFinished = tournament.players.every(p => p.roundsPlayed >= tournament.maxRounds);
-              
-              if (allPlayersFinished) {
-                return ' ✅ TOURNAMENT COMPLETE';
-              } else if (currentRound === tournament.maxRounds && activeRounds.length === 1) {
-                return ' 🏁 FINAL ROUND';
-              } else if (activeRounds.length > 1) {
-                return ` (${activeRounds.length} rounds active)`;
-              } else if (activeRounds.length === 0) {
-                return ' (pairing needed)';
-              }
-              return '';
-            })()}
-          </p>
-          <p><strong>Matches:</strong> {completedMatches.length} completed, {currentMatches.length} playing</p>
+    <div
+      className="swiss-dashboard"
+      style={{ padding: "20px", maxWidth: "1200px", margin: "0 auto" }}
+    >
+      {/* 1. Tournament Progress - Top Section */}
+      <div
+        style={{
+          marginBottom: "25px",
+          padding: "15px",
+          backgroundColor: "#f8f9fa",
+          borderRadius: "8px",
+          border: "1px solid #dee2e6",
+        }}
+      >
+        <h2 style={{ margin: "0 0 10px 0", color: "#495057" }}>
+          Round{" "}
+          {nextRound > tournament.numRounds ? tournament.numRounds : nextRound}{" "}
+          of {tournament.numRounds}
+        </h2>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+            gap: "15px",
+            fontSize: "14px",
+          }}
+        >
+          <div>
+            <strong>Completed Matches:</strong> {completedMatches} /{" "}
+            {tournament.matches.length}
+          </div>
+          <div>
+            <strong>Active Matches:</strong> {activeMatches.length}
+          </div>
+          <div>
+            <strong>Available Players:</strong> {availablePlayers.length}
+          </div>
+          <div>
+            <strong>Tolerance:</strong> ±{tournament.swissTolerance} points
+          </div>
         </div>
 
-        <div style={{ 
-          background: '#f8f9fa', 
-          padding: '15px', 
-          borderRadius: '8px', 
-          border: '1px solid #dee2e6' 
-        }}>
-          <h4 style={{ margin: '0 0 10px 0', color: '#495057' }}>Player Status</h4>
-          {Object.entries(statusCounts).map(([status, count]) => (
-            <p key={status} style={{ margin: '5px 0' }}>
-              {getStatusIcon(status)} <strong>{status.replace('-', ' ')}:</strong> {count}
-            </p>
-          ))}
-        </div>
-
-        {scenario && (
-          <div style={{ 
-            background: '#f8f9fa', 
-            padding: '15px', 
-            borderRadius: '8px', 
-            border: '1px solid #dee2e6' 
-          }}>
-            <h4 style={{ margin: '0 0 10px 0', color: '#495057' }}>Algorithm Validation</h4>
-            <p><strong>Success Rate:</strong> {Math.round(scenario.probabilityOfSuccess * 100)}% 
-              {scenario.probabilityOfSuccess === 1.0 && ' ✅'}
-            </p>
-            <p><strong>Active Matches:</strong> {scenario.currentMatches.length}</p>
-            <p><strong>Scenarios Tested:</strong> {scenario.possibleOutcomes.length || 'None (no active matches)'}</p>
+        {/* Manual Pairing Button */}
+        {availablePlayers.length >= 2 && (
+          <div style={{ marginTop: "15px" }}>
+            <button
+              onClick={() => setShowManualPairing(true)}
+              disabled={showManualPairing}
+              style={{
+                padding: "8px 16px",
+                backgroundColor: showManualPairing ? "#6c757d" : "#17a2b8",
+                color: "white",
+                border: "none",
+                borderRadius: "5px",
+                fontSize: "14px",
+                cursor: showManualPairing ? "not-allowed" : "pointer",
+              }}
+            >
+              Manual Pair
+            </button>
           </div>
         )}
       </div>
 
-      {/* Tournament Recovery Section */}
-      {isDeadlocked && (
-        <div style={{ 
-          padding: '20px', 
-          borderRadius: '8px', 
-          marginBottom: '30px',
-          backgroundColor: '#f8d7da',
-          border: '1px solid #f5c6cb'
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-            <div>
-              <h4 style={{ margin: '0 0 5px 0', color: '#721c24' }}>🚨 Tournament Deadlock Detected</h4>
-              <p style={{ margin: '0', color: '#721c24' }}>
-                The tournament is stuck because some players finished while others are still in earlier rounds. Click to recover.
-              </p>
-            </div>
-            <button 
-              className="btn"
-              style={{ 
-                backgroundColor: '#dc3545', 
-                color: 'white', 
-                border: 'none',
-                padding: '12px 20px',
-                fontSize: '1em',
-                fontWeight: 'bold'
+      {/* Manual Pairing Form */}
+      {showManualPairing && (
+        <div style={{ marginBottom: "25px" }}>
+          <div
+            style={{
+              padding: "20px",
+              backgroundColor: "#e7f3ff",
+              border: "1px solid #bee5eb",
+              borderRadius: "8px",
+            }}
+          >
+            <h3 style={{ margin: "0 0 15px 0", color: "#0c5460" }}>
+              Manual Pairing
+            </h3>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: "20px",
+                marginBottom: "20px",
               }}
-              onClick={handleRecoverTournament}
             >
-              🔧 Recover Tournament
-            </button>
+              {/* Player 1 Selection */}
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    fontWeight: "bold",
+                    marginBottom: "8px",
+                    color: "#495057",
+                  }}
+                >
+                  Player 1:
+                </label>
+                <select
+                  value={manualPlayer1 !== null ? manualPlayer1 + 1 : ""}
+                  onChange={(e) => {
+                    setManualPlayer1(
+                      e.target.value !== ""
+                        ? parseInt(e.target.value) - 1
+                        : null
+                    );
+                    setManualPlayer2(null); // Reset player 2 when player 1 changes
+                  }}
+                  style={{
+                    width: "100%",
+                    padding: "8px",
+                    border: "1px solid #dee2e6",
+                    borderRadius: "4px",
+                    fontSize: "14px",
+                  }}
+                >
+                  <option value="">Select Player 1...</option>
+                  {availablePlayers.map((player) => {
+                    const record = getPlayerRecord(
+                      player.id,
+                      tournament.matches
+                    );
+                    const roundsPlayed = getRoundsPlayed(
+                      player,
+                      tournament.matches
+                    );
+                    return (
+                      <option key={player.id} value={player.id + 1}>
+                        {player.name} (R: {roundsPlayed}, W: {record.wins})
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+
+              {/* Player 2 Selection */}
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    fontWeight: "bold",
+                    marginBottom: "8px",
+                    color: "#495057",
+                  }}
+                >
+                  Player 2:
+                </label>
+                <select
+                  value={manualPlayer2 !== null ? manualPlayer2 + 1 : ""}
+                  onChange={(e) =>
+                    setManualPlayer2(
+                      e.target.value !== ""
+                        ? parseInt(e.target.value) - 1
+                        : null
+                    )
+                  }
+                  disabled={manualPlayer1 === null}
+                  style={{
+                    width: "100%",
+                    padding: "8px",
+                    border: "1px solid #dee2e6",
+                    borderRadius: "4px",
+                    fontSize: "14px",
+                    backgroundColor:
+                      manualPlayer1 === null ? "#f8f9fa" : "white",
+                    cursor: manualPlayer1 === null ? "not-allowed" : "pointer",
+                  }}
+                >
+                  <option value="">Select Player 2...</option>
+                  {manualPlayer1 !== null &&
+                    availablePlayers
+                      .filter((player) => player.id !== manualPlayer1)
+                      .map((player) => {
+                        const record = getPlayerRecord(
+                          player.id,
+                          tournament.matches
+                        );
+                        const roundsPlayed = getRoundsPlayed(
+                          player,
+                          tournament.matches
+                        );
+                        return (
+                          <option key={player.id} value={player.id + 1}>
+                            {player.name} (R: {roundsPlayed}, W: {record.wins})
+                          </option>
+                        );
+                      })}
+                </select>
+              </div>
+            </div>
+
+            {/* Player Information Display */}
+            {manualPlayer1 !== null && manualPlayer2 !== null && (
+              <div
+                style={{
+                  marginBottom: "20px",
+                  padding: "15px",
+                  backgroundColor: "white",
+                  borderRadius: "5px",
+                  border: "1px solid #dee2e6",
+                }}
+              >
+                <div
+                  style={{
+                    fontWeight: "bold",
+                    marginBottom: "10px",
+                    color: "#495057",
+                  }}
+                >
+                  Pairing Information:
+                </div>
+                <div style={{ fontSize: "14px", color: "#6c757d" }}>
+                  <div style={{ marginBottom: "5px" }}>
+                    <strong>Head-to-Head:</strong>{" "}
+                    {havePlayedBefore(
+                      manualPlayer1,
+                      manualPlayer2,
+                      tournament.matches
+                    )
+                      ? "⚠️ These players have played before"
+                      : "✅ These players have not played before"}
+                  </div>
+                  <div>
+                    <strong>Round:</strong> This will be Round {nextRound}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div style={{ display: "flex", gap: "10px" }}>
+              <button
+                onClick={handleManualPairSubmit}
+                disabled={manualPlayer1 === null || manualPlayer2 === null}
+                style={{
+                  padding: "8px 16px",
+                  backgroundColor:
+                    manualPlayer1 === null || manualPlayer2 === null
+                      ? "#6c757d"
+                      : "#28a745",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "4px",
+                  cursor:
+                    manualPlayer1 === null || manualPlayer2 === null
+                      ? "not-allowed"
+                      : "pointer",
+                  fontSize: "14px",
+                }}
+              >
+                Submit Pairing
+              </button>
+              <button
+                onClick={handleManualPairCancel}
+                style={{
+                  padding: "8px 16px",
+                  backgroundColor: "#6c757d",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                  fontSize: "14px",
+                }}
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Round Pairing Section */}
-      {pairingSuggestions.length > 0 && !isDeadlocked && pairingResult?.canProceed && (
-        <div style={{ 
-          padding: '20px', 
-          borderRadius: '8px', 
-          marginBottom: '30px',
-          backgroundColor: '#d4edda',
-          border: '1px solid #c3e6cb'
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-            <div>
-              <h4 style={{ margin: '0 0 5px 0', color: '#155724' }}>Complete Round Ready</h4>
-              <p style={{ margin: '0', color: '#155724' }}>
-                {pairingSuggestions.length} pairing{pairingSuggestions.length > 1 ? 's' : ''} available for this round
-              </p>
-            </div>
-            <button 
-              className="btn"
-              style={{ 
-                backgroundColor: pairingResult?.canProceed ? '#28a745' : '#6c757d', 
-                color: 'white', 
-                border: 'none',
-                padding: '12px 20px',
-                fontSize: '1em',
-                fontWeight: 'bold'
-              }}
-              onClick={handleImplementAllPairings}
-              disabled={!pairingResult?.canProceed}
-            >
-              {getButtonText()}
-            </button>
-          </div>
-          
-          {/* Show all pairings with individual start buttons */}
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', 
-            gap: '10px' 
-          }}>
-            {pairingSuggestions.map((suggestion, index) => {
-              const player1 = tournament.players.find(p => p.id === suggestion.player1Id);
-              const player2 = tournament.players.find(p => p.id === suggestion.player2Id);
-              return (
-                <div key={`${suggestion.player1Id}-${suggestion.player2Id}`} style={{ 
-                  background: '#f8fff9', 
-                  padding: '12px', 
-                  borderRadius: '6px', 
-                  border: '1px solid #c3e6cb',
-                  fontSize: '0.9em',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '8px'
-                }}>
-                  <div>
-                    <strong>{player1?.name}</strong> vs <strong>{player2?.name}</strong>
-                    <div style={{ fontSize: '0.8em', color: '#666', marginTop: '3px' }}>
-                      {suggestion.reason}
+      {/* 2. Playing Pairs Section */}
+      {activeMatches.length > 0 && (
+        <div style={{ marginBottom: "25px" }}>
+          <h3 style={{ margin: "0 0 15px 0", color: "#dc3545" }}>
+            Playing Pairs
+          </h3>
+          <div
+            style={{
+              backgroundColor: "#fff5f5",
+              border: "1px solid #f5c6cb",
+              borderRadius: "8px",
+              padding: "15px",
+            }}
+          >
+            {(() => {
+              // Group matches by round and add visual separation
+              const matchesByRound = new Map<number, typeof activeMatches>();
+              activeMatches.forEach((match) => {
+                if (!matchesByRound.has(match.round)) {
+                  matchesByRound.set(match.round, []);
+                }
+                matchesByRound.get(match.round)!.push(match);
+              });
+
+              // Sort rounds
+              const sortedRounds = Array.from(matchesByRound.keys()).sort(
+                (a, b) => a - b
+              );
+
+              return sortedRounds.map((round, roundIndex) => (
+                <div key={round}>
+                  {/* Add spacing between different rounds */}
+                  {roundIndex > 0 && <div style={{ height: "20px" }} />}
+
+                  {/* Round header (only show if there are multiple rounds) */}
+                  {sortedRounds.length > 1 && (
+                    <div
+                      style={{
+                        fontWeight: "bold",
+                        fontSize: "14px",
+                        color: "#495057",
+                        marginBottom: "8px",
+                        paddingLeft: "5px",
+                      }}
+                    >
+                      Round {round}
                     </div>
-                  </div>
-                  <button 
-                    disabled={!pairingResult?.canProceed}
-                    style={{ 
-                      backgroundColor: !pairingResult?.canProceed ? '#6c757d' : '#17a2b8', 
-                      color: 'white', 
-                      border: 'none',
-                      padding: '6px 12px',
-                      borderRadius: '4px',
-                      fontSize: '0.8em',
-                      cursor: !pairingResult?.canProceed ? 'not-allowed' : 'pointer',
-                      alignSelf: 'flex-start',
-                      opacity: !pairingResult?.canProceed ? 0.6 : 1
-                    }}
-                    onClick={() => {
-                      // Check if we can proceed based on probability validation
-                      if (!pairingResult?.canProceed) {
-                        console.warn('Cannot implement pairing: probability of success < 100%');
-                        return;
-                      }
-                      const updatedTournament = implementPairing(tournament, suggestion);
-                      setTournament(updatedTournament);
+                  )}
+
+                  {/* Matches for this round */}
+                  {matchesByRound.get(round)!.map((match) => {
+                    const player1 = tournament.players[match.player1];
+                    const player2 = tournament.players[match.player2];
+                    const isEditing = editingMatch === match.id;
+                    const scores = pendingScores[match.id];
+
+                    return (
+                      <div
+                        key={match.id}
+                        style={{
+                          marginBottom: "8px",
+                          backgroundColor: "white",
+                          borderRadius: "5px",
+                          border: "1px solid #e9ecef",
+                        }}
+                      >
+                        {!isEditing ? (
+                          <div
+                            onClick={() => handleMatchClick(match.id)}
+                            style={{
+                              padding: "10px",
+                              cursor: "pointer",
+                              transition: "background-color 0.2s",
+                            }}
+                            onMouseOver={(e) =>
+                              (e.currentTarget.style.backgroundColor =
+                                "#f8f9fa")
+                            }
+                            onMouseOut={(e) =>
+                              (e.currentTarget.style.backgroundColor = "white")
+                            }
+                          >
+                            <div
+                              style={{
+                                fontWeight: "bold",
+                                marginBottom: "4px",
+                              }}
+                            >
+                              {player1.name} ({player1.points} pts) vs{" "}
+                              {player2.name} ({player2.points} pts)
+                            </div>
+                            <div style={{ fontSize: "13px", color: "#6c757d" }}>
+                              Round {match.round} • ELO: {player1.currentElo} vs{" "}
+                              {player2.currentElo} • Click to enter scores
+                            </div>
+                          </div>
+                        ) : (
+                          <div style={{ padding: "15px" }}>
+                            <div
+                              style={{
+                                fontWeight: "bold",
+                                marginBottom: "10px",
+                              }}
+                            >
+                              Enter Scores - Round {match.round}
+                            </div>
+
+                            <div
+                              style={{
+                                display: "grid",
+                                gridTemplateColumns: "1fr auto 1fr",
+                                gap: "15px",
+                                alignItems: "center",
+                                marginBottom: "15px",
+                              }}
+                            >
+                              {/* Player 1 Score Input */}
+                              <div>
+                                <div
+                                  style={{
+                                    fontWeight: "bold",
+                                    marginBottom: "5px",
+                                  }}
+                                >
+                                  {player1.name}
+                                </div>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max={tournament.maxPoints}
+                                  value={scores?.player1Score || ""}
+                                  onChange={(e) =>
+                                    handleScoreChange(
+                                      match.id,
+                                      "player1",
+                                      e.target.value
+                                    )
+                                  }
+                                  onFocus={() =>
+                                    handleAutoComplete(match.id, "player1")
+                                  }
+                                  onBlur={() =>
+                                    handleAutoComplete(match.id, "player1")
+                                  }
+                                  placeholder="0"
+                                  style={{
+                                    width: "80px",
+                                    padding: "8px",
+                                    border: "2px solid #dee2e6",
+                                    borderRadius: "4px",
+                                    fontSize: "16px",
+                                    textAlign: "center",
+                                  }}
+                                />
+                              </div>
+
+                              {/* VS divider */}
+                              <div
+                                style={{ fontWeight: "bold", color: "#6c757d" }}
+                              >
+                                vs
+                              </div>
+
+                              {/* Player 2 Score Input */}
+                              <div>
+                                <div
+                                  style={{
+                                    fontWeight: "bold",
+                                    marginBottom: "5px",
+                                  }}
+                                >
+                                  {player2.name}
+                                </div>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max={tournament.maxPoints}
+                                  value={scores?.player2Score || ""}
+                                  onChange={(e) =>
+                                    handleScoreChange(
+                                      match.id,
+                                      "player2",
+                                      e.target.value
+                                    )
+                                  }
+                                  onFocus={() =>
+                                    handleAutoComplete(match.id, "player2")
+                                  }
+                                  onBlur={() =>
+                                    handleAutoComplete(match.id, "player2")
+                                  }
+                                  placeholder="0"
+                                  style={{
+                                    width: "80px",
+                                    padding: "8px",
+                                    border: "2px solid #dee2e6",
+                                    borderRadius: "4px",
+                                    fontSize: "16px",
+                                    textAlign: "center",
+                                  }}
+                                />
+                              </div>
+                            </div>
+
+                            {/* Action buttons */}
+                            <div
+                              style={{
+                                display: "flex",
+                                gap: "10px",
+                                justifyContent: "flex-end",
+                              }}
+                            >
+                              <button
+                                onClick={handleCancelScore}
+                                style={{
+                                  padding: "8px 16px",
+                                  backgroundColor: "#6c757d",
+                                  color: "white",
+                                  border: "none",
+                                  borderRadius: "4px",
+                                  cursor: "pointer",
+                                  fontSize: "14px",
+                                }}
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                onClick={() => handleSubmitScore(match.id)}
+                                disabled={!isValidScore(match.id)}
+                                style={{
+                                  padding: "8px 16px",
+                                  backgroundColor: isValidScore(match.id)
+                                    ? "#28a745"
+                                    : "#dee2e6",
+                                  color: isValidScore(match.id)
+                                    ? "white"
+                                    : "#6c757d",
+                                  border: "none",
+                                  borderRadius: "4px",
+                                  cursor: isValidScore(match.id)
+                                    ? "pointer"
+                                    : "not-allowed",
+                                  fontSize: "14px",
+                                }}
+                              >
+                                Submit Score
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ));
+            })()}
+          </div>
+        </div>
+      )}
+
+      {/* 3. Proposed Pairings Section - Show if there are pairings OR waiting message */}
+      {(proposedPairings.length > 0 ||
+        (availablePlayers.length > 0 && activeMatches.length > 0)) && (
+        <div style={{ marginBottom: "25px" }}>
+          {proposedPairings.length > 0 ? (
+            <>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  marginBottom: "15px",
+                }}
+              >
+                <h3 style={{ margin: 0, color: "#28a745" }}>
+                  Proposed Pairings
+                </h3>
+                <button
+                  onClick={handleApplyPairings}
+                  style={{
+                    padding: "8px 16px",
+                    backgroundColor: "#28a745",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "5px",
+                    fontSize: "14px",
+                    cursor: "pointer",
+                  }}
+                >
+                  Apply Pairings
+                </button>
+              </div>
+              <div
+                style={{
+                  backgroundColor: "#f5fff5",
+                  border: "1px solid #c3e6cb",
+                  borderRadius: "8px",
+                  padding: "15px",
+                }}
+              >
+                {proposedPairings.map((pairing, index) => {
+                  const player1 = tournament.players[pairing.player1Id];
+                  const player2 = tournament.players[pairing.player2Id];
+                  return (
+                    <div
+                      key={index}
+                      style={{
+                        padding: "10px",
+                        marginBottom: "8px",
+                        backgroundColor: "white",
+                        borderRadius: "5px",
+                        border: "1px solid #e9ecef",
+                      }}
+                    >
+                      <div style={{ fontWeight: "bold", marginBottom: "4px" }}>
+                        {player1.name} ({player1.points} pts) vs {player2.name}{" "}
+                        ({player2.points} pts)
+                      </div>
+                      <div style={{ fontSize: "13px", color: "#6c757d" }}>
+                        Round {pairing.round} • ELO: {player1.currentElo} vs{" "}
+                        {player2.currentElo}
+                      </div>
+                    </div>
+                  );
+                })}
+                <div
+                  style={{
+                    fontSize: "13px",
+                    color: "#28a745",
+                    fontStyle: "italic",
+                    marginTop: "10px",
+                  }}
+                >
+                  ✓ All proposed pairings are guaranteed to allow valid pairings
+                  for remaining players
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <h3 style={{ margin: "0 0 15px 0", color: "#ffc107" }}>
+                Waiting for Safe Pairings
+              </h3>
+              <div
+                style={{
+                  backgroundColor: "#fff3cd",
+                  border: "1px solid #ffeaa7",
+                  borderRadius: "8px",
+                  padding: "15px",
+                }}
+              >
+                <div
+                  style={{
+                    fontWeight: "bold",
+                    marginBottom: "8px",
+                    color: "#856404",
+                  }}
+                >
+                  ⏳ No safe pairings available right now
+                </div>
+                <div
+                  style={{
+                    fontSize: "14px",
+                    color: "#856404",
+                    marginBottom: "8px",
+                  }}
+                >
+                  The system is waiting for active matches to complete before
+                  proposing new pairings. This ensures all players can be paired
+                  fairly regardless of match outcomes.
+                </div>
+                <div
+                  style={{
+                    fontSize: "13px",
+                    color: "#856404",
+                    fontStyle: "italic",
+                  }}
+                >
+                  Safe pairings will appear automatically when matches finish.
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* 4. All Players Table - Bottom Section */}
+      <div>
+        <h3 style={{ margin: "0 0 15px 0", color: "#495057" }}>All Players</h3>
+        <div style={{ overflowX: "auto" }}>
+          <table
+            style={{
+              width: "100%",
+              borderCollapse: "collapse",
+              backgroundColor: "white",
+              border: "1px solid #dee2e6",
+              borderRadius: "8px",
+            }}
+          >
+            <thead>
+              <tr style={{ backgroundColor: "#f8f9fa" }}>
+                <th
+                  style={{
+                    padding: "12px",
+                    textAlign: "left",
+                    border: "1px solid #dee2e6",
+                  }}
+                >
+                  Name
+                </th>
+                <th
+                  style={{
+                    padding: "12px",
+                    textAlign: "center",
+                    border: "1px solid #dee2e6",
+                  }}
+                >
+                  Status
+                </th>
+                <th
+                  style={{
+                    padding: "12px",
+                    textAlign: "center",
+                    border: "1px solid #dee2e6",
+                  }}
+                >
+                  Rounds
+                </th>
+                <th
+                  style={{
+                    padding: "12px",
+                    textAlign: "center",
+                    border: "1px solid #dee2e6",
+                  }}
+                >
+                  Wins
+                </th>
+                <th
+                  style={{
+                    padding: "12px",
+                    textAlign: "center",
+                    border: "1px solid #dee2e6",
+                  }}
+                >
+                  Losses
+                </th>
+                <th
+                  style={{
+                    padding: "12px",
+                    textAlign: "center",
+                    border: "1px solid #dee2e6",
+                  }}
+                >
+                  Points
+                </th>
+                <th
+                  style={{
+                    padding: "12px",
+                    textAlign: "center",
+                    border: "1px solid #dee2e6",
+                  }}
+                >
+                  TB1
+                </th>
+                <th
+                  style={{
+                    padding: "12px",
+                    textAlign: "center",
+                    border: "1px solid #dee2e6",
+                  }}
+                >
+                  TB2
+                </th>
+                <th
+                  style={{
+                    padding: "12px",
+                    textAlign: "center",
+                    border: "1px solid #dee2e6",
+                  }}
+                >
+                  ELO
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {calculateStandardRanking(
+                tournament.players,
+                tournament.results
+              ).map((player) => {
+                const record = getPlayerRecord(player.id, tournament.matches);
+                const roundsPlayed = getRoundsPlayed(
+                  player,
+                  tournament.matches
+                );
+                const status = getPlayerStatus(player);
+
+                return (
+                  <tr
+                    key={player.id}
+                    style={{
+                      backgroundColor:
+                        status === "Playing"
+                          ? "#fff3cd"
+                          : status === "Finished"
+                          ? "#e7f3e7"
+                          : "white",
                     }}
                   >
-                    ▶️ Start This Match
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Current Matches */}
-      {currentMatches.length > 0 && (
-        <div style={{ marginBottom: '30px' }}>
-          <h3>🟡 Current Matches in Progress</h3>
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', 
-            gap: '15px' 
-          }}>
-            {currentMatches.map(match => {
-              const player1 = tournament.players.find(p => p.id === match.player1);
-              const player2 = tournament.players.find(p => p.id === match.player2);
-              return (
-                <div key={match.id} style={{ 
-                  background: '#fff3cd', 
-                  padding: '15px', 
-                  borderRadius: '8px', 
-                  border: '1px solid #ffeaa7' 
-                }}>
-                  <h4 style={{ margin: '0 0 10px 0' }}>Round {match.round}</h4>
-                  <p><strong>{player1?.name}</strong> vs <strong>{player2?.name}</strong></p>
-                  <p style={{ fontSize: '0.9em', color: '#666' }}>
-                    Started: {match.startTime ? new Date(match.startTime).toLocaleTimeString() : 'Unknown'}
-                  </p>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-
-      {/* Player Status Grid */}
-      <div>
-        <h3>👥 Player Status Overview</h3>
-        <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', 
-          gap: '10px' 
-        }}>
-          {playersWithStatus.map(player => (
-            <div key={player.id} style={{ 
-              background: '#f8f9fa',
-              padding: '12px', 
-              borderRadius: '8px', 
-              border: `2px solid ${getStatusColor(player.status)}`,
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center'
-            }}>
-              <div>
-                <strong>{player.name}</strong>
-                <div style={{ fontSize: '0.9em', color: '#666' }}>
-                  Round: {player.currentRound} | Points: {player.pointsEarned} | ELO: {player.currentElo}
-                </div>
-                <div style={{ fontSize: '0.8em', color: '#666' }}>
-                  Record: {player.totalWins}W-{player.totalLosses}L
-                </div>
-              </div>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '1.2em' }}>{getStatusIcon(player.status)}</div>
-                <div style={{ 
-                  fontSize: '0.8em', 
-                  fontWeight: 'bold',
-                  color: getStatusColor(player.status),
-                  textTransform: 'capitalize'
-                }}>
-                  {player.status.replace('-', ' ')}
-                </div>
-              </div>
-            </div>
-          ))}
+                    <td
+                      style={{
+                        padding: "10px",
+                        border: "1px solid #dee2e6",
+                        fontWeight: "bold",
+                      }}
+                    >
+                      {player.name}
+                    </td>
+                    <td
+                      style={{
+                        padding: "10px",
+                        border: "1px solid #dee2e6",
+                        textAlign: "center",
+                      }}
+                    >
+                      {status}
+                    </td>
+                    <td
+                      style={{
+                        padding: "10px",
+                        border: "1px solid #dee2e6",
+                        textAlign: "center",
+                      }}
+                    >
+                      {roundsPlayed}/{tournament.numRounds}
+                    </td>
+                    <td
+                      style={{
+                        padding: "10px",
+                        border: "1px solid #dee2e6",
+                        textAlign: "center",
+                      }}
+                    >
+                      {record.wins}
+                    </td>
+                    <td
+                      style={{
+                        padding: "10px",
+                        border: "1px solid #dee2e6",
+                        textAlign: "center",
+                      }}
+                    >
+                      {record.losses}
+                    </td>
+                    <td
+                      style={{
+                        padding: "10px",
+                        border: "1px solid #dee2e6",
+                        textAlign: "center",
+                        fontWeight: "bold",
+                      }}
+                    >
+                      {player.points}
+                    </td>
+                    <td
+                      style={{
+                        padding: "10px",
+                        border: "1px solid #dee2e6",
+                        textAlign: "center",
+                      }}
+                    >
+                      <span
+                        style={{ fontSize: "12px", color: "#6c757d" }}
+                        title="Head-to-Head: Wins vs players with same points"
+                      >
+                        {player.tiebreakers.winsAgainstSamePoints}
+                      </span>
+                    </td>
+                    <td
+                      style={{
+                        padding: "10px",
+                        border: "1px solid #dee2e6",
+                        textAlign: "center",
+                      }}
+                    >
+                      <span
+                        style={{ fontSize: "12px", color: "#6c757d" }}
+                        title="Buchholz: Sum of opponents' points"
+                      >
+                        {player.tiebreakers.buchholzScore}
+                      </span>
+                    </td>
+                    <td
+                      style={{
+                        padding: "10px",
+                        border: "1px solid #dee2e6",
+                        textAlign: "center",
+                      }}
+                    >
+                      {player.currentElo}
+                      {player.currentElo !== player.startingElo && (
+                        <span
+                          style={{
+                            fontSize: "12px",
+                            color:
+                              player.currentElo > player.startingElo
+                                ? "#28a745"
+                                : "#dc3545",
+                          }}
+                        >
+                          ({player.currentElo >= player.startingElo ? "+" : ""}
+                          {player.currentElo - player.startingElo})
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

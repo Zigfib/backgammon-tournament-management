@@ -205,12 +205,25 @@ export const updateMatchResult = (tournament: Tournament, matchId: number, playe
     updatedPlayers[match.player2].currentElo = prevPlayer2ELO;
   }
   
-  return {
+  const updatedTournament = {
     ...tournament,
     matches: tournament.matches.map(m => m.id === matchId ? updatedMatch : m),
     players: updatedPlayers,
     results: updatedResults
   };
+  
+  // If a match was just completed AND this is a rapid swiss tournament, trigger Swiss pairing generation
+  if (updatedMatch.completed && updatedMatch.player1Score !== null && updatedMatch.player2Score !== null && updatedTournament.tournamentType === 'rapid-swiss') {
+    console.log('Match completed in rapid swiss tournament - check Proposed Pairings section for next round options');
+    
+    // CRITICAL: Recalculate player stats (including points) after match completion
+    const playersWithStats = calculateStats(updatedTournament.players, updatedTournament.matches);
+    const tournamentWithStats = { ...updatedTournament, players: playersWithStats };
+    
+    return tournamentWithStats;
+  }
+  
+  return updatedTournament;
 };
 
 export const calculateStats = (players: Player[], matches: Match[]): Player[] => {
@@ -246,4 +259,554 @@ export const calculateStats = (players: Player[], matches: Match[]): Player[] =>
   });
   
   return updatedPlayers;
+};
+
+// Swiss Tournament Functions
+export const getCurrentRound = (tournament: Tournament): number => {
+  const playingMatches = tournament.matches.filter(match => !match.completed);
+  const rounds = playingMatches.map(match => match.round);
+  const currentRound = rounds.length > 0 ? Math.max(...rounds) : tournament.numRounds;
+  
+  console.log(`getCurrentRound debug: playingMatches=${playingMatches.length}, rounds=[${rounds.join(',')}], tournament.currentRound=${currentRound}`);
+  
+  return currentRound;
+};
+
+export const getActiveRounds = (tournament: Tournament): number[] => {
+  const playingMatches = tournament.matches.filter(match => !match.completed);
+  const roundsSet = new Set(playingMatches.map(match => match.round));
+  const rounds = Array.from(roundsSet).sort();
+  return rounds;
+};
+
+export const getRoundsPlayed = (player: Player, matches: Match[]): number => {
+  return matches.filter(match => 
+    (match.player1 === player.id || match.player2 === player.id) && match.completed
+  ).length;
+};
+
+export const updatePlayerRoundsPlayed = (tournament: Tournament, matchId: number): Tournament => {
+  const match = tournament.matches.find(m => m.id === matchId);
+  if (!match || !match.completed) return tournament;
+  
+  const player1 = tournament.players[match.player1];
+  const player2 = tournament.players[match.player2];
+  
+  const player1RoundsPlayed = getRoundsPlayed(player1, tournament.matches);
+  const player2RoundsPlayed = getRoundsPlayed(player2, tournament.matches);
+  
+  console.log(`Match completion: Player ${player1.name} roundsPlayed: ${player1RoundsPlayed - 1} -> ${player1RoundsPlayed}, currentRound -> ${match.round}`);
+  console.log(`Match completion: Player ${player2.name} roundsPlayed: ${player2RoundsPlayed - 1} -> ${player2RoundsPlayed}, currentRound -> ${match.round}`);
+  
+  return tournament;
+};
+
+// Swiss Tournament Pairing Algorithm
+export const generateSwissPairings = (tournament: Tournament): Tournament => {
+  console.log('generateSwissPairings: Starting pairing generation');
+  
+  // Get available players (not currently in active matches)
+  const activeMatches = tournament.matches.filter(m => !m.completed);
+  const playersInActiveMatches = new Set();
+  
+  activeMatches.forEach(match => {
+    playersInActiveMatches.add(match.player1);
+    playersInActiveMatches.add(match.player2);
+  });
+  
+  const availablePlayers = tournament.players.filter(player => 
+    !playersInActiveMatches.has(player.id) && 
+    getRoundsPlayed(player, tournament.matches) < tournament.numRounds
+  );
+  
+  console.log(`generateSwissPairings: ${availablePlayers.length} players available for pairing`);
+  console.log(`Available players: ${availablePlayers.map(p => p.name).join(', ')}`);
+  
+  if (availablePlayers.length < 2) {
+    console.log('generateSwissPairings: Not enough players available for pairing');
+    return tournament;
+  }
+  
+  // FIXED: Round calculation based on available players' progress, not global state
+  const targetRoundsPlayed = Math.min(...availablePlayers.map(player => getRoundsPlayed(player, tournament.matches)));
+  const candidateGroup = availablePlayers.filter(player => getRoundsPlayed(player, tournament.matches) === targetRoundsPlayed);
+  const nextRound = targetRoundsPlayed + 1;
+  
+  console.log(`generateSwissPairings: Target rounds played: ${targetRoundsPlayed}, candidate group: ${candidateGroup.length} players`);
+  
+  // Only work with players who have completed the same number of rounds
+  const availableForPairing = candidateGroup;
+  
+  // Group players by points (Swiss tournament principle) - only those in candidate group
+  const playersByPoints = new Map();
+  availableForPairing.forEach(player => {
+    const points = player.points;
+    if (!playersByPoints.has(points)) {
+      playersByPoints.set(points, []);
+    }
+    playersByPoints.get(points).push(player);
+  });
+  
+  // Sort point groups in descending order
+  const sortedPointGroups = Array.from(playersByPoints.entries()).sort((a, b) => b[0] - a[0]);
+  console.log(`generateSwissPairings: Point groups:`, sortedPointGroups.map(([points, players]) => 
+    `${points}pts: [${players.map((p: Player) => p.name).join(', ')}]`
+  ).join(', '));
+  
+  const newMatches = [];
+  const usedPlayers = new Set();
+  
+  let nextMatchId = Math.max(...tournament.matches.map(m => m.id), -1) + 1;
+  
+  // Create pairings within and between score groups
+  for (const [points, players] of sortedPointGroups) {
+    const availableInGroup = players.filter((p: Player) => !usedPlayers.has(p.id));
+    
+    // Pair within the same score group first
+    for (let i = 0; i < availableInGroup.length - 1; i += 2) {
+      const player1 = availableInGroup[i];
+      const player2 = availableInGroup[i + 1];
+      
+      // Check if they've played before
+      const havePlayedBefore = tournament.matches.some(match => 
+        (match.player1 === player1.id && match.player2 === player2.id) ||
+        (match.player1 === player2.id && match.player2 === player1.id)
+      );
+      
+      if (!havePlayedBefore) {
+        newMatches.push({
+          id: nextMatchId++,
+          player1: player1.id,
+          player2: player2.id,
+          round: nextRound,
+          player1Score: null,
+          player2Score: null,
+          completed: false
+        });
+        
+        usedPlayers.add(player1.id);
+        usedPlayers.add(player2.id);
+        console.log(`generateSwissPairings: Paired ${player1.name} vs ${player2.name} (both ${points} points)`);
+      }
+    }
+  }
+  
+  // Handle leftover players by pairing across score groups (respecting tolerance)
+  const remainingPlayers = availableForPairing.filter(p => !usedPlayers.has(p.id));
+  console.log(`generateSwissPairings: ${remainingPlayers.length} players remaining for cross-group pairing (tolerance: ${tournament.swissTolerance})`);
+  
+  // Sort remaining players by points for tolerance-based pairing
+  const sortedRemainingPlayers = remainingPlayers.sort((a, b) => b.points - a.points);
+  
+  for (let i = 0; i < sortedRemainingPlayers.length; i++) {
+    if (usedPlayers.has(sortedRemainingPlayers[i].id)) continue;
+    
+    const player1 = sortedRemainingPlayers[i];
+    
+    // Find a suitable opponent within tolerance
+    for (let j = i + 1; j < sortedRemainingPlayers.length; j++) {
+      if (usedPlayers.has(sortedRemainingPlayers[j].id)) continue;
+      
+      const player2 = sortedRemainingPlayers[j];
+      const pointDifference = Math.abs(player1.points - player2.points);
+      
+      // Check if within tolerance and haven't played before
+      if (pointDifference <= tournament.swissTolerance) {
+        const havePlayedBefore = tournament.matches.some(match => 
+          (match.player1 === player1.id && match.player2 === player2.id) ||
+          (match.player1 === player2.id && match.player2 === player1.id)
+        );
+        
+        if (!havePlayedBefore) {
+          newMatches.push({
+            id: nextMatchId++,
+            player1: player1.id,
+            player2: player2.id,
+            round: nextRound,
+            player1Score: null,
+            player2Score: null,
+            completed: false
+          });
+          
+          usedPlayers.add(player1.id);
+          usedPlayers.add(player2.id);
+          console.log(`generateSwissPairings: Cross-group paired ${player1.name} (${player1.points}pts) vs ${player2.name} (${player2.points}pts)`);
+          break; // Found a pairing for player1, move to next
+        }
+      }
+    }
+  }
+  
+  console.log(`generateSwissPairings: Generated ${newMatches.length} new matches for round ${nextRound}`);
+  
+  const successRate = availableForPairing.length >= 2 ? (newMatches.length * 2 / availableForPairing.length * 100) : 0;
+  console.log(`generateSwissPairings: Pairing success rate: ${successRate.toFixed(1)}%`);
+  
+  return {
+    ...tournament,
+    matches: [...tournament.matches, ...newMatches]
+  };
+};
+
+// Utility functions for Swiss Dashboard
+export const getPlayerRecord = (playerId: number, matches: Match[]): { wins: number, losses: number } => {
+  const playerMatches = matches.filter(m => 
+    (m.player1 === playerId || m.player2 === playerId) && m.completed
+  );
+  
+  let wins = 0;
+  let losses = 0;
+  
+  playerMatches.forEach(match => {
+    if (match.player1Score === null || match.player2Score === null) return;
+    
+    const isPlayer1 = match.player1 === playerId;
+    const playerScore = isPlayer1 ? match.player1Score : match.player2Score;
+    const opponentScore = isPlayer1 ? match.player2Score : match.player1Score;
+    
+    if (playerScore > opponentScore) {
+      wins++;
+    } else {
+      losses++;
+    }
+  });
+  
+  return { wins, losses };
+};
+
+export const getNextRound = (tournament: Tournament): number => {
+  const availablePlayers = getAvailablePlayers(tournament);
+  
+  if (availablePlayers.length === 0) {
+    // No available players, return current max round for display
+    const maxRound = tournament.matches.length ? Math.max(...tournament.matches.map(m => m.round)) : 0;
+    return Math.max(1, maxRound);
+  }
+  
+  // Calculate next round based on minimum rounds played by available players
+  const minRoundsPlayed = Math.min(...availablePlayers.map(player => getRoundsPlayed(player, tournament.matches)));
+  return minRoundsPlayed + 1;
+};
+
+export const getAvailablePlayers = (tournament: Tournament): Player[] => {
+  const activeMatches = tournament.matches.filter(m => !m.completed);
+  const playersInActiveMatches = new Set<number>();
+  
+  activeMatches.forEach(match => {
+    playersInActiveMatches.add(match.player1);
+    playersInActiveMatches.add(match.player2);
+  });
+  
+  return tournament.players.filter(player => 
+    !playersInActiveMatches.has(player.id) && 
+    getRoundsPlayed(player, tournament.matches) < tournament.numRounds
+  );
+};
+
+export const havePlayedBefore = (playerId1: number, playerId2: number, matches: Match[]): boolean => {
+  return matches.some(match => 
+    (match.player1 === playerId1 && match.player2 === playerId2) ||
+    (match.player1 === playerId2 && match.player2 === playerId1)
+  );
+};
+
+// Fisher-Yates shuffle function for randomizing pairings
+const shuffle = <T>(arr: T[]): T[] => {
+  const shuffled = [...arr];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+};
+
+// Safe Swiss Pairing Algorithm - considers all possible outcomes of active matches
+// Scenario for a possible match outcome
+interface MatchOutcome {
+  matchId: number;
+  winner: number;
+  loser: number;
+  winnerScore: number;
+  loserScore: number;
+}
+
+interface PairingScenario {
+  outcomes: MatchOutcome[];
+  players: Player[]; // players with updated points based on outcomes
+}
+
+// Generate all possible outcomes for active matches
+const enumerateOutcomeScenarios = (tournament: Tournament, activeMatches: Match[], availableAfterCompletion: Player[]): PairingScenario[] => {
+  if (activeMatches.length === 0) {
+    return [{ outcomes: [], players: [...tournament.players] }];
+  }
+  
+  // Limit combinatorial explosion - if too many active matches, be conservative
+  if (activeMatches.length > 8) {
+    return []; // Return no scenarios to force waiting
+  }
+  
+  const scenarios: PairingScenario[] = [];
+  const totalCombinations = Math.pow(2, activeMatches.length);
+  
+  for (let combination = 0; combination < totalCombinations; combination++) {
+    const outcomes: MatchOutcome[] = [];
+    const playerPoints = new Map<number, number>();
+    
+    // Initialize current points
+    tournament.players.forEach(player => {
+      playerPoints.set(player.id, player.points);
+    });
+    
+    // Apply outcomes for this combination
+    activeMatches.forEach((match, index) => {
+      const player1WinsInThisCombination = (combination >> index) & 1;
+      const winner = player1WinsInThisCombination ? match.player1 : match.player2;
+      const loser = player1WinsInThisCombination ? match.player2 : match.player1;
+      
+      outcomes.push({
+        matchId: match.id,
+        winner,
+        loser,
+        winnerScore: tournament.maxPoints,
+        loserScore: Math.floor(Math.random() * (tournament.maxPoints - 1)) + 1 // Random losing score
+      });
+      
+      // Update points
+      playerPoints.set(winner, (playerPoints.get(winner) || 0) + tournament.maxPoints);
+      playerPoints.set(loser, (playerPoints.get(loser) || 0) + Math.floor(Math.random() * (tournament.maxPoints - 1)) + 1);
+    });
+    
+    // Create updated player list
+    const updatedPlayers = tournament.players.map(player => ({
+      ...player,
+      points: playerPoints.get(player.id) || player.points
+    }));
+    
+    scenarios.push({ outcomes, players: updatedPlayers });
+  }
+  
+  return scenarios;
+};
+
+// Build eligibility graph - who can play whom based on constraints
+const buildEligibilityGraph = (players: Player[], tournament: Tournament, targetRound: number): Map<number, Set<number>> => {
+  const graph = new Map<number, Set<number>>();
+  
+  players.forEach(player => {
+    graph.set(player.id, new Set());
+  });
+  
+  for (let i = 0; i < players.length; i++) {
+    for (let j = i + 1; j < players.length; j++) {
+      const player1 = players[i];
+      const player2 = players[j];
+      
+      // Check constraints
+      const pointDifference = Math.abs(player1.points - player2.points);
+      const withinTolerance = pointDifference <= tournament.swissTolerance;
+      const notPlayedBefore = !havePlayedBefore(player1.id, player2.id, tournament.matches);
+      
+      if (withinTolerance && notPlayedBefore) {
+        graph.get(player1.id)!.add(player2.id);
+        graph.get(player2.id)!.add(player1.id);
+      }
+    }
+  }
+  
+  return graph;
+};
+
+// Backtracking perfect matching solver
+const findPerfectMatchingBacktracking = (
+  playerIds: number[], 
+  eligibilityGraph: Map<number, Set<number>>,
+  fixedPairs: [number, number][] = []
+): boolean => {
+  // Must have even number of players for perfect matching
+  if (playerIds.length % 2 !== 0) {
+    return false;
+  }
+  
+  // Track used players
+  const used = new Set<number>();
+  fixedPairs.forEach(([p1, p2]) => {
+    used.add(p1);
+    used.add(p2);
+  });
+  
+  const remaining = playerIds.filter(id => !used.has(id));
+  
+  // Base case - all paired
+  if (remaining.length === 0) {
+    return true;
+  }
+  
+  // Choose player with fewest options (minimum degree heuristic)
+  let minPlayer = remaining[0];
+  let minDegree = Infinity;
+  
+  remaining.forEach(playerId => {
+    const availableOpponents = Array.from(eligibilityGraph.get(playerId) || [])
+      .filter(opponentId => remaining.includes(opponentId));
+    if (availableOpponents.length < minDegree) {
+      minDegree = availableOpponents.length;
+      minPlayer = playerId;
+    }
+  });
+  
+  // Try pairing minPlayer with each eligible opponent
+  const eligibleOpponents = Array.from(eligibilityGraph.get(minPlayer) || [])
+    .filter(opponentId => remaining.includes(opponentId));
+    
+  for (const opponent of eligibleOpponents) {
+    const newRemaining = remaining.filter(id => id !== minPlayer && id !== opponent);
+    const newFixed = [...fixedPairs, [minPlayer, opponent] as [number, number]];
+    
+    if (findPerfectMatchingBacktracking(newRemaining, eligibilityGraph, newFixed)) {
+      return true;
+    }
+  }
+  
+  return false;
+};
+
+// Find safe pairs that work in all scenarios
+const findSafePairs = (
+  availableNow: Player[],
+  scenarios: PairingScenario[],
+  tournament: Tournament,
+  targetRound: number
+): { player1Id: number, player2Id: number, round: number }[] => {
+  const safePairs: { player1Id: number, player2Id: number, round: number }[] = [];
+  const usedPlayers = new Set<number>();
+  
+  // Keep finding safe pairs until none remain
+  while (true) {
+    let foundSafePair = false;
+    const currentlyAvailable = availableNow.filter(p => !usedPlayers.has(p.id));
+    
+    // Try each possible pair among currently available players
+    for (let i = 0; i < currentlyAvailable.length && !foundSafePair; i++) {
+      for (let j = i + 1; j < currentlyAvailable.length; j++) {
+        const player1 = currentlyAvailable[i];
+        const player2 = currentlyAvailable[j];
+        
+        // Check if this pair is valid now
+        const pointDifference = Math.abs(player1.points - player2.points);
+        const withinTolerance = pointDifference <= tournament.swissTolerance;
+        const notPlayedBefore = !havePlayedBefore(player1.id, player2.id, tournament.matches);
+        
+        if (!withinTolerance || !notPlayedBefore) {
+          continue;
+        }
+        
+        // Test if this pair is safe across all scenarios
+        let isSafeInAllScenarios = true;
+        
+        for (const scenario of scenarios) {
+          // Get all players who will be available for pairing in this scenario
+          const availableAfterActive = getAvailablePlayers({
+            ...tournament,
+            players: scenario.players
+          });
+          
+          const allPlayersForPairing = [...currentlyAvailable, ...availableAfterActive]
+            .filter(p => !usedPlayers.has(p.id));
+          
+          // Build eligibility graph for this scenario
+          const graph = buildEligibilityGraph(allPlayersForPairing, 
+            { ...tournament, players: scenario.players }, targetRound);
+          
+          // Remove the candidate pair and see if perfect matching still possible
+          const remainingPlayerIds = allPlayersForPairing
+            .filter(p => p.id !== player1.id && p.id !== player2.id)
+            .map(p => p.id);
+          
+          if (!findPerfectMatchingBacktracking(remainingPlayerIds, graph)) {
+            isSafeInAllScenarios = false;
+            break;
+          }
+        }
+        
+        if (isSafeInAllScenarios) {
+          safePairs.push({
+            player1Id: player1.id,
+            player2Id: player2.id,
+            round: targetRound
+          });
+          usedPlayers.add(player1.id);
+          usedPlayers.add(player2.id);
+          foundSafePair = true;
+          break;
+        }
+      }
+    }
+    
+    if (!foundSafePair) {
+      break;
+    }
+  }
+  
+  return safePairs;
+};
+
+export const getProposedSwissPairings = (tournament: Tournament): { player1Id: number, player2Id: number, round: number }[] => {
+  const availablePlayers = getAvailablePlayers(tournament);
+  
+  if (availablePlayers.length < 2) {
+    return [];
+  }
+  
+  // Use same cohorting logic as generateSwissPairings
+  const targetRoundsPlayed = Math.min(...availablePlayers.map(player => getRoundsPlayed(player, tournament.matches)));
+  const candidateGroup = availablePlayers.filter(player => getRoundsPlayed(player, tournament.matches) === targetRoundsPlayed);
+  const nextRound = targetRoundsPlayed + 1;
+  
+  // Check if this is round 1 - use simple pairing for first round
+  const isRound1 = targetRoundsPlayed === 0;
+  
+  if (isRound1) {
+    // Round 1: Simple randomized pairing - no need for safe pairing analysis
+    const proposedPairs: { player1Id: number, player2Id: number, round: number }[] = [];
+    const shuffledPlayers = shuffle(candidateGroup);
+    
+    for (let i = 0; i < shuffledPlayers.length - 1; i += 2) {
+      const player1 = shuffledPlayers[i];
+      const player2 = shuffledPlayers[i + 1];
+      
+      proposedPairs.push({
+        player1Id: player1.id,
+        player2Id: player2.id,
+        round: nextRound
+      });
+    }
+    
+    return proposedPairs;
+  }
+  
+  // SAFE SWISS PAIRING ALGORITHM for subsequent rounds
+  console.log(`Safe pairing analysis: ${candidateGroup.length} candidates for round ${nextRound}`);
+  
+  // Get active matches that players from candidateGroup are waiting for
+  const activeMatches = tournament.matches.filter(m => !m.completed);
+  console.log(`Active matches: ${activeMatches.length}`);
+  
+  // Generate all possible outcome scenarios for active matches
+  const scenarios = enumerateOutcomeScenarios(tournament, activeMatches, []);
+  
+  if (scenarios.length === 0) {
+    // Too many active matches - be conservative and propose no pairings
+    console.log('Too many active matches for safe pairing analysis - waiting');
+    return [];
+  }
+  
+  console.log(`Analyzing ${scenarios.length} possible outcome scenarios`);
+  
+  // Find safe pairs that work in all scenarios
+  const safePairs = findSafePairs(candidateGroup, scenarios, tournament, nextRound);
+  
+  console.log(`Found ${safePairs.length} safe pairings`);
+  
+  return safePairs;
 };

@@ -1,30 +1,24 @@
-import { Player, PlayerWithTiebreakers, Tiebreakers } from '../types';
+import { Player, PlayerWithTiebreakers, Tiebreakers } from "../types";
 
-export const calculateTiebreakers = (player: Player, allPlayers: Player[], results: Record<number, Record<number, any[]>>, tournamentType?: string): Tiebreakers => {
+export const calculateTiebreakers = (
+  player: Player,
+  allPlayers: Player[],
+  results: Record<number, Record<number, any[]>>
+): Tiebreakers => {
   const playerResults = results[player.id] || {};
-  const isSwiss = tournamentType === 'rapid-swiss';
-  const playerPoints = isSwiss ? (player as any).pointsEarned || 0 : player.points;
 
   // 1. Number of wins against players with the same number of points
-  const playersWithSamePoints = allPlayers.filter(p => {
-    const pPoints = isSwiss ? (p as any).pointsEarned || 0 : p.points;
-    return pPoints === playerPoints && p.id !== player.id;
-  });
+  const playersWithSamePoints = allPlayers.filter(
+    (p) => p.points === player.points && p.id !== player.id
+  );
   let winsAgainstSamePoints = 0;
 
-  playersWithSamePoints.forEach(opponent => {
+  playersWithSamePoints.forEach((opponent) => {
     const resultsVsOpponent = playerResults[opponent.id] || [];
-    resultsVsOpponent.forEach(result => {
-      if (isSwiss) {
-        // Swiss: 1 point = win, 0 points = loss
-        if (result.points1 === 1) {
-          winsAgainstSamePoints++;
-        }
-      } else {
-        // Round-Robin: 3 points = win
-        if (result.points1 === 3) {
-          winsAgainstSamePoints++;
-        }
+    resultsVsOpponent.forEach((result) => {
+      if (result.points1 === 3) {
+        // Player won this match
+        winsAgainstSamePoints++;
       }
     });
   });
@@ -34,7 +28,7 @@ export const calculateTiebreakers = (player: Player, allPlayers: Player[], resul
   const opponentsPlayed = new Set<number>();
 
   // Check all results where this player participated
-  Object.keys(playerResults).forEach(opponentId => {
+  Object.keys(playerResults).forEach((opponentId) => {
     const resultsList = playerResults[parseInt(opponentId)];
     if (resultsList.length > 0) {
       opponentsPlayed.add(parseInt(opponentId));
@@ -42,7 +36,7 @@ export const calculateTiebreakers = (player: Player, allPlayers: Player[], resul
   });
 
   // Also check results where this player was the opponent
-  allPlayers.forEach(otherPlayer => {
+  allPlayers.forEach((otherPlayer) => {
     if (otherPlayer.id !== player.id) {
       const otherResults = results[otherPlayer.id] || {};
       const resultsVsThisPlayer = otherResults[player.id] || [];
@@ -53,11 +47,10 @@ export const calculateTiebreakers = (player: Player, allPlayers: Player[], resul
   });
 
   // Sum up the points of all opponents played
-  opponentsPlayed.forEach(opponentId => {
-    const opponent = allPlayers.find(p => p.id === opponentId);
+  opponentsPlayed.forEach((opponentId) => {
+    const opponent = allPlayers.find((p) => p.id === opponentId);
     if (opponent) {
-      const opponentPoints = isSwiss ? (opponent as any).pointsEarned || 0 : opponent.points;
-      buchholzScore += opponentPoints;
+      buchholzScore += opponent.points;
     }
   });
 
@@ -67,29 +60,34 @@ export const calculateTiebreakers = (player: Player, allPlayers: Player[], resul
   return {
     winsAgainstSamePoints,
     buchholzScore,
-    goalDifference
+    goalDifference,
   };
 };
 
-export const calculateStandardRanking = (players: Player[], results: Record<number, Record<number, any[]>> = {}, tournamentType?: string): PlayerWithTiebreakers[] => {
-  const isSwiss = tournamentType === 'rapid-swiss';
-
+export const calculateStandardRanking = (
+  players: Player[],
+  results: Record<number, Record<number, any[]>> = {}
+): PlayerWithTiebreakers[] => {
   // Calculate tiebreakers for all players
-  const playersWithTiebreakers = players.map(player => ({
+  const playersWithTiebreakers = players.map((player) => ({
     ...player,
-    tiebreakers: calculateTiebreakers(player, players, results, tournamentType)
+    tiebreakers: calculateTiebreakers(player, players, results),
   }));
 
   // Sort by: 1) Points, 2) Wins against same points, 3) Buchholz, 4) Goal Diff
   return playersWithTiebreakers.sort((a, b) => {
-    // Primary: Total points (descending) - use pointsEarned for Swiss
-    const aPoints = isSwiss ? (a as any).pointsEarned || 0 : a.points;
-    const bPoints = isSwiss ? (b as any).pointsEarned || 0 : b.points;
-    if (bPoints !== aPoints) return bPoints - aPoints;
+    // Primary: Total points (descending)
+    if (b.points !== a.points) return b.points - a.points;
 
     // Tiebreaker 1: Wins against players with same points (descending)
-    if (b.tiebreakers.winsAgainstSamePoints !== a.tiebreakers.winsAgainstSamePoints) {
-      return b.tiebreakers.winsAgainstSamePoints - a.tiebreakers.winsAgainstSamePoints;
+    if (
+      b.tiebreakers.winsAgainstSamePoints !==
+      a.tiebreakers.winsAgainstSamePoints
+    ) {
+      return (
+        b.tiebreakers.winsAgainstSamePoints -
+        a.tiebreakers.winsAgainstSamePoints
+      );
     }
 
     // Tiebreaker 2: Modified Buchholz (descending)
@@ -102,25 +100,30 @@ export const calculateStandardRanking = (players: Player[], results: Record<numb
   });
 };
 
-export const calculateHybridRanking = (players: Player[], results: Record<number, Record<number, any[]>> = {}, tournamentType?: string): PlayerWithTiebreakers[] => {
-  const isSwiss = tournamentType === 'rapid-swiss';
-
+export const calculateHybridRanking = (
+  players: Player[],
+  results: Record<number, Record<number, any[]>> = {}
+): PlayerWithTiebreakers[] => {
   // Calculate tiebreakers for all players
-  const playersWithTiebreakers = players.map(player => ({
+  const playersWithTiebreakers = players.map((player) => ({
     ...player,
-    tiebreakers: calculateTiebreakers(player, players, results, tournamentType),
-    eloChange: (player.currentElo || player.startingElo) - player.startingElo
+    tiebreakers: calculateTiebreakers(player, players, results),
+    eloChange: (player.currentElo || player.startingElo) - player.startingElo,
   }));
 
   // First, sort everyone by points to determine groups
   const sortedByPoints = [...playersWithTiebreakers].sort((a, b) => {
-    const aPoints = isSwiss ? (a as any).pointsEarned || 0 : a.points;
-    const bPoints = isSwiss ? (b as any).pointsEarned || 0 : b.points;
-    if (bPoints !== aPoints) return bPoints - aPoints;
+    if (b.points !== a.points) return b.points - a.points;
 
     // Use tiebreakers for points-based sorting
-    if (b.tiebreakers.winsAgainstSamePoints !== a.tiebreakers.winsAgainstSamePoints) {
-      return b.tiebreakers.winsAgainstSamePoints - a.tiebreakers.winsAgainstSamePoints;
+    if (
+      b.tiebreakers.winsAgainstSamePoints !==
+      a.tiebreakers.winsAgainstSamePoints
+    ) {
+      return (
+        b.tiebreakers.winsAgainstSamePoints -
+        a.tiebreakers.winsAgainstSamePoints
+      );
     }
     if (b.tiebreakers.buchholzScore !== a.tiebreakers.buchholzScore) {
       return b.tiebreakers.buchholzScore - a.tiebreakers.buchholzScore;
@@ -128,77 +131,108 @@ export const calculateHybridRanking = (players: Player[], results: Record<number
     return b.tiebreakers.goalDifference - a.tiebreakers.goalDifference;
   });
 
-  // Sort remaining players by ELO (excluding first 2)
-  const sortedByELO = [...sortedByPoints.slice(2)].sort((a, b) => {
-    if (b.eloChange !== a.eloChange) return b.eloChange! - a.eloChange!;
-
-    // Use same tiebreakers for ELO-based sorting
-    if (b.tiebreakers.winsAgainstSamePoints !== a.tiebreakers.winsAgainstSamePoints) {
-      return b.tiebreakers.winsAgainstSamePoints - a.tiebreakers.winsAgainstSamePoints;
-    }
-    if (b.tiebreakers.buchholzScore !== a.tiebreakers.buchholzScore) {
-      return b.tiebreakers.buchholzScore - a.tiebreakers.buchholzScore;
-    }
-    return b.tiebreakers.goalDifference - a.tiebreakers.goalDifference;
-  });
-
-  // Assign ranking method with proper alternating pattern
+  // Assign ranking method: first 2 by points, next 2 by ELO, etc.
   const finalRanking: PlayerWithTiebreakers[] = [];
-  const usedPlayerIds = new Set<number>();
+  let position = 0;
 
-  let pointsIndex = 0;
-  let eloIndex = 0;
-
-  for (let position = 0; position < sortedByPoints.length; position++) {
+  while (position < sortedByPoints.length) {
     if (position < 2) {
       // First 2 positions: rank by points
-      const player = { ...sortedByPoints[position], rankMethod: 'points' as const };
+      const player = {
+        ...sortedByPoints[position],
+        rankMethod: "points" as const,
+      };
       finalRanking.push(player);
-      usedPlayerIds.add(player.id);
-    } else {
-      // Determine if this position should use points or ELO
-      // Pattern: positions 2-3 (ELO), 4-5 (points), 6-7 (ELO), etc.
-      const cyclePosition = (position - 2) % 4;
-      const useELO = cyclePosition < 2;
+    } else if (position < 4) {
+      // Next 2 positions: rank by ELO improvement
+      const remainingPlayers = sortedByPoints.slice(2);
+      const sortedByELO = remainingPlayers.sort((a, b) => {
+        if (b.eloChange !== a.eloChange) return b.eloChange! - a.eloChange!;
 
-      if (useELO) {
-        // Use ELO ranking
-        while (eloIndex < sortedByELO.length && usedPlayerIds.has(sortedByELO[eloIndex].id)) {
-          eloIndex++;
+        // Use same tiebreakers for ELO-based sorting
+        if (
+          b.tiebreakers.winsAgainstSamePoints !==
+          a.tiebreakers.winsAgainstSamePoints
+        ) {
+          return (
+            b.tiebreakers.winsAgainstSamePoints -
+            a.tiebreakers.winsAgainstSamePoints
+          );
         }
-        if (eloIndex < sortedByELO.length) {
-          const player = { ...sortedByELO[eloIndex], rankMethod: 'elo' as const };
+        if (b.tiebreakers.buchholzScore !== a.tiebreakers.buchholzScore) {
+          return b.tiebreakers.buchholzScore - a.tiebreakers.buchholzScore;
+        }
+        return b.tiebreakers.goalDifference - a.tiebreakers.goalDifference;
+      });
+
+      if (position - 2 < sortedByELO.length) {
+        const player = {
+          ...sortedByELO[position - 2],
+          rankMethod: "elo" as const,
+        };
+        finalRanking.push(player);
+      }
+    } else {
+      // Continue alternating pattern: positions 5-6 by points, 7-8 by ELO, etc.
+      const cyclePosition = (position - 4) % 4;
+      const usePoints = cyclePosition < 2;
+
+      const remainingPlayers = sortedByPoints.slice(4);
+
+      if (usePoints) {
+        // Rank by points
+        const pointsRanked = remainingPlayers.sort((a, b) => {
+          if (b.points !== a.points) return b.points - a.points;
+          if (
+            b.tiebreakers.winsAgainstSamePoints !==
+            a.tiebreakers.winsAgainstSamePoints
+          ) {
+            return (
+              b.tiebreakers.winsAgainstSamePoints -
+              a.tiebreakers.winsAgainstSamePoints
+            );
+          }
+          if (b.tiebreakers.buchholzScore !== a.tiebreakers.buchholzScore) {
+            return b.tiebreakers.buchholzScore - a.tiebreakers.buchholzScore;
+          }
+          return b.tiebreakers.goalDifference - a.tiebreakers.goalDifference;
+        });
+
+        const pointsIndex = Math.floor((position - 4) / 2);
+        if (pointsIndex < pointsRanked.length) {
+          const player = {
+            ...pointsRanked[pointsIndex],
+            rankMethod: "points" as const,
+          };
           finalRanking.push(player);
-          usedPlayerIds.add(player.id);
-          eloIndex++;
         }
       } else {
-        // Use points ranking (skip first 2 already used)
-        const startFrom = pointsIndex + 2; // Skip first 2 positions
-        let found = false;
-        for (let i = startFrom; i < sortedByPoints.length; i++) {
-          if (!usedPlayerIds.has(sortedByPoints[i].id)) {
-            const player = { ...sortedByPoints[i], rankMethod: 'points' as const };
-            finalRanking.push(player);
-            usedPlayerIds.add(player.id);
-            pointsIndex = i - 2; // Adjust for the offset
-            found = true;
-            break;
+        // Rank by ELO
+        const eloRanked = remainingPlayers.sort((a, b) => {
+          if (b.eloChange !== a.eloChange) return b.eloChange! - a.eloChange!;
+          if (
+            b.tiebreakers.winsAgainstSamePoints !==
+            a.tiebreakers.winsAgainstSamePoints
+          ) {
+            return (
+              b.tiebreakers.winsAgainstSamePoints -
+              a.tiebreakers.winsAgainstSamePoints
+            );
           }
-        }
-        if (!found) {
-          // Fallback: use any remaining player
-          for (let i = 0; i < sortedByPoints.length; i++) {
-            if (!usedPlayerIds.has(sortedByPoints[i].id)) {
-              const player = { ...sortedByPoints[i], rankMethod: 'points' as const };
-              finalRanking.push(player);
-              usedPlayerIds.add(player.id);
-              break;
-            }
+          if (b.tiebreakers.buchholzScore !== a.tiebreakers.buchholzScore) {
+            return b.tiebreakers.buchholzScore - a.tiebreakers.buchholzScore;
           }
+          return b.tiebreakers.goalDifference - a.tiebreakers.goalDifference;
+        });
+
+        const eloIndex = Math.floor((position - 4) / 2);
+        if (eloIndex < eloRanked.length) {
+          const player = { ...eloRanked[eloIndex], rankMethod: "elo" as const };
+          finalRanking.push(player);
         }
       }
     }
+    position++;
   }
 
   return finalRanking;
