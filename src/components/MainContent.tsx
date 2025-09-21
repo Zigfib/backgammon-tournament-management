@@ -4,6 +4,7 @@ import MatchEntry from './MatchEntry';
 import TournamentTable from './TournamentTable';
 import Standings from './Standings';
 import Statistics from './Statistics';
+import SwissDashboard from './SwissDashboard';
 import { calculateStats } from '../utils/tournament';
 
 interface MainContentProps {
@@ -12,7 +13,9 @@ interface MainContentProps {
 }
 
 const MainContent: React.FC<MainContentProps> = ({ tournament, setTournament }) => {
-  const [activeTab, setActiveTab] = useState<'matches' | 'table' | 'standings' | 'stats'>('matches');
+  // Default to Swiss dashboard for Swiss tournaments, otherwise matches
+  const defaultTab = tournament.tournamentType === 'rapid-swiss' ? 'swiss' : 'matches';
+  const [activeTab, setActiveTab] = useState<'swiss' | 'matches' | 'table' | 'standings' | 'stats'>(defaultTab);
 
   // Update stats whenever tournament changes
   useEffect(() => {
@@ -28,6 +31,14 @@ const MainContent: React.FC<MainContentProps> = ({ tournament, setTournament }) 
   return (
     <div className="main-content">
       <div className="tabs">
+        {tournament.tournamentType === 'rapid-swiss' && (
+          <button
+            className={`tab ${activeTab === 'swiss' ? 'active' : ''}`}
+            onClick={() => setActiveTab('swiss')}
+          >
+            Swiss Dashboard
+          </button>
+        )}
         <button
           className={`tab ${activeTab === 'matches' ? 'active' : ''}`}
           onClick={() => setActiveTab('matches')}
@@ -53,6 +64,12 @@ const MainContent: React.FC<MainContentProps> = ({ tournament, setTournament }) 
           Statistics
         </button>
       </div>
+
+      {tournament.tournamentType === 'rapid-swiss' && (
+        <div className={`tab-content ${activeTab === 'swiss' ? 'active' : ''}`}>
+          <SwissDashboard tournament={tournament} setTournament={setTournament} />
+        </div>
+      )}
 
       <div className={`tab-content ${activeTab === 'matches' ? 'active' : ''}`}>
         {hasMatches ? (

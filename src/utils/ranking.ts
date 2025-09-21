@@ -1,5 +1,5 @@
 
-import { Player, PlayerWithTiebreakers, Tiebreakers, Tournament } from '../types';
+import { Player, PlayerWithTiebreakers, Tiebreakers } from '../types';
 
 export const calculateTiebreakers = (player: Player, allPlayers: Player[], results: Record<number, Record<number, any[]>>): Tiebreakers => {
   const playerResults = results[player.id] || {};
