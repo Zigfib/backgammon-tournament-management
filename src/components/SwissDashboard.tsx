@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Tournament, Player } from '../types';
-import { getRoundsPlayed, getPlayerRecord, getNextRound, getAvailablePlayers, getProposedSwissPairings } from '../utils/tournament';
+import { getRoundsPlayed, getPlayerRecord, getNextRound, getAvailablePlayers, getProposedSwissPairings, updateMatchResult } from '../utils/tournament';
 
 interface SwissDashboardProps {
   tournament: Tournament;
@@ -8,6 +8,10 @@ interface SwissDashboardProps {
 }
 
 const SwissDashboard: React.FC<SwissDashboardProps> = ({ tournament, setTournament }) => {
+  // State for score input
+  const [editingMatch, setEditingMatch] = useState<number | null>(null);
+  const [pendingScores, setPendingScores] = useState<{[key: number]: {player1Score: string, player2Score: string}}>({});
+  
   // Get data for the dashboard
   const activeMatches = tournament.matches.filter(m => !m.completed);
   const availablePlayers = getAvailablePlayers(tournament);
@@ -39,6 +43,88 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({ tournament, setTourname
       ...prev,
       matches: [...prev.matches, ...newMatches]
     }));
+  };
+
+  // Score input handlers
+  const handleMatchClick = (matchId: number) => {
+    setEditingMatch(matchId);
+    if (!pendingScores[matchId]) {
+      setPendingScores(prev => ({
+        ...prev,
+        [matchId]: { player1Score: '', player2Score: '' }
+      }));
+    }
+  };
+
+  const handleScoreChange = (matchId: number, player: 'player1' | 'player2', value: string) => {
+    setPendingScores(prev => ({
+      ...prev,
+      [matchId]: {
+        ...prev[matchId],
+        [player + 'Score']: value
+      }
+    }));
+  };
+
+  const handleAutoComplete = (matchId: number, player: 'player1' | 'player2') => {
+    const scores = pendingScores[matchId];
+    if (!scores) return;
+
+    const currentScore = player === 'player1' ? scores.player1Score : scores.player2Score;
+    const otherScore = player === 'player1' ? scores.player2Score : scores.player1Score;
+
+    if (otherScore && parseInt(otherScore) < tournament.maxPoints && !currentScore) {
+      setPendingScores(prev => ({
+        ...prev,
+        [matchId]: {
+          ...prev[matchId],
+          [player + 'Score']: tournament.maxPoints.toString()
+        }
+      }));
+    }
+  };
+
+  const isValidScore = (matchId: number): boolean => {
+    const scores = pendingScores[matchId];
+    if (!scores || !scores.player1Score || !scores.player2Score) return false;
+    
+    const p1Score = parseInt(scores.player1Score);
+    const p2Score = parseInt(scores.player2Score);
+    
+    if (isNaN(p1Score) || isNaN(p2Score)) return false;
+    if (p1Score < 0 || p2Score < 0 || p1Score > tournament.maxPoints || p2Score > tournament.maxPoints) return false;
+    if (p1Score === 0 && p2Score === 0) return false;
+    
+    return (p1Score === tournament.maxPoints && p2Score < tournament.maxPoints) ||
+           (p2Score === tournament.maxPoints && p1Score < tournament.maxPoints);
+  };
+
+  const handleSubmitScore = (matchId: number) => {
+    if (!isValidScore(matchId)) {
+      alert('Please enter valid scores');
+      return;
+    }
+
+    const scores = pendingScores[matchId];
+    const updatedTournament = updateMatchResult(tournament, matchId, 
+      scores.player1Score, scores.player2Score);
+    
+    setTournament(updatedTournament);
+    setEditingMatch(null);
+    setPendingScores(prev => {
+      const newScores = { ...prev };
+      delete newScores[matchId];
+      return newScores;
+    });
+  };
+
+  const handleCancelScore = () => {
+    setEditingMatch(null);
+    setPendingScores(prev => {
+      const newScores = { ...prev };
+      if (editingMatch) delete newScores[editingMatch];
+      return newScores;
+    });
   };
   
   // Get player status for the bottom table
@@ -81,14 +167,122 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({ tournament, setTourname
             {activeMatches.map(match => {
               const player1 = tournament.players[match.player1];
               const player2 = tournament.players[match.player2];
+              const isEditing = editingMatch === match.id;
+              const scores = pendingScores[match.id];
+              
               return (
-                <div key={match.id} style={{ padding: '10px', marginBottom: '8px', backgroundColor: 'white', borderRadius: '5px', border: '1px solid #e9ecef' }}>
-                  <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
-                    {player1.name} ({player1.points} pts) vs {player2.name} ({player2.points} pts)
-                  </div>
-                  <div style={{ fontSize: '13px', color: '#6c757d' }}>
-                    Round {match.round} • ELO: {player1.currentElo} vs {player2.currentElo}
-                  </div>
+                <div key={match.id} style={{ marginBottom: '8px', backgroundColor: 'white', borderRadius: '5px', border: '1px solid #e9ecef' }}>
+                  {!isEditing ? (
+                    <div 
+                      onClick={() => handleMatchClick(match.id)}
+                      style={{ 
+                        padding: '10px',
+                        cursor: 'pointer',
+                        transition: 'background-color 0.2s',
+                      }}
+                      onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'}
+                      onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'white'}
+                    >
+                      <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
+                        {player1.name} ({player1.points} pts) vs {player2.name} ({player2.points} pts)
+                      </div>
+                      <div style={{ fontSize: '13px', color: '#6c757d' }}>
+                        Round {match.round} • ELO: {player1.currentElo} vs {player2.currentElo} • Click to enter scores
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ padding: '15px' }}>
+                      <div style={{ fontWeight: 'bold', marginBottom: '10px' }}>
+                        Enter Scores - Round {match.round}
+                      </div>
+                      
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: '15px', alignItems: 'center', marginBottom: '15px' }}>
+                        {/* Player 1 Score Input */}
+                        <div>
+                          <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>
+                            {player1.name}
+                          </div>
+                          <input
+                            type="number"
+                            min="0"
+                            max={tournament.maxPoints}
+                            value={scores?.player1Score || ''}
+                            onChange={(e) => handleScoreChange(match.id, 'player1', e.target.value)}
+                            onBlur={() => handleAutoComplete(match.id, 'player1')}
+                            placeholder="0"
+                            style={{
+                              width: '80px',
+                              padding: '8px',
+                              border: '2px solid #dee2e6',
+                              borderRadius: '4px',
+                              fontSize: '16px',
+                              textAlign: 'center'
+                            }}
+                          />
+                        </div>
+                        
+                        {/* VS divider */}
+                        <div style={{ fontWeight: 'bold', color: '#6c757d' }}>vs</div>
+                        
+                        {/* Player 2 Score Input */}
+                        <div>
+                          <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>
+                            {player2.name}
+                          </div>
+                          <input
+                            type="number"
+                            min="0"
+                            max={tournament.maxPoints}
+                            value={scores?.player2Score || ''}
+                            onChange={(e) => handleScoreChange(match.id, 'player2', e.target.value)}
+                            onBlur={() => handleAutoComplete(match.id, 'player2')}
+                            placeholder="0"
+                            style={{
+                              width: '80px',
+                              padding: '8px',
+                              border: '2px solid #dee2e6',
+                              borderRadius: '4px',
+                              fontSize: '16px',
+                              textAlign: 'center'
+                            }}
+                          />
+                        </div>
+                      </div>
+                      
+                      {/* Action buttons */}
+                      <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                        <button
+                          onClick={handleCancelScore}
+                          style={{
+                            padding: '8px 16px',
+                            backgroundColor: '#6c757d',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontSize: '14px'
+                          }}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={() => handleSubmitScore(match.id)}
+                          disabled={!isValidScore(match.id)}
+                          style={{
+                            padding: '8px 16px',
+                            backgroundColor: isValidScore(match.id) ? '#28a745' : '#dee2e6',
+                            color: isValidScore(match.id) ? 'white' : '#6c757d',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: isValidScore(match.id) ? 'pointer' : 'not-allowed',
+                            fontSize: '14px'
+                          }}
+                        >
+                          Submit Score
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })}
