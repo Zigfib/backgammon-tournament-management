@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Tournament, Player } from '../types';
-import { getRoundsPlayed, getPlayerRecord, getNextRound, getAvailablePlayers, getProposedSwissPairings, updateMatchResult } from '../utils/tournament';
+import { getRoundsPlayed, getPlayerRecord, getNextRound, getAvailablePlayers, getProposedSwissPairings, updateMatchResult, havePlayedBefore } from '../utils/tournament';
 import { calculateStandardRanking } from '../utils/ranking';
 
 interface SwissDashboardProps {
@@ -12,6 +12,11 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({ tournament, setTourname
   // State for score input
   const [editingMatch, setEditingMatch] = useState<number | null>(null);
   const [pendingScores, setPendingScores] = useState<{[key: number]: {player1Score: string, player2Score: string}}>({});
+  
+  // State for manual pairing
+  const [showManualPairing, setShowManualPairing] = useState(false);
+  const [manualPlayer1, setManualPlayer1] = useState<number | null>(null);
+  const [manualPlayer2, setManualPlayer2] = useState<number | null>(null);
   
   // Get data for the dashboard
   const activeMatches = tournament.matches.filter(m => !m.completed);
@@ -133,6 +138,47 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({ tournament, setTourname
       return newScores;
     });
   };
+
+  // Manual pairing handlers
+  const handleManualPairSubmit = () => {
+    if (!manualPlayer1 || !manualPlayer2) {
+      alert('Please select both players');
+      return;
+    }
+
+    if (manualPlayer1 === manualPlayer2) {
+      alert('Cannot pair a player with themselves');
+      return;
+    }
+
+    // Create new match
+    const nextMatchId = Math.max(...tournament.matches.map(m => m.id), -1) + 1;
+    const newMatch = {
+      id: nextMatchId,
+      player1: manualPlayer1,
+      player2: manualPlayer2,
+      round: nextRound,
+      player1Score: null,
+      player2Score: null,
+      completed: false
+    };
+
+    setTournament(prev => ({
+      ...prev,
+      matches: [...prev.matches, newMatch]
+    }));
+
+    // Reset manual pairing state
+    setShowManualPairing(false);
+    setManualPlayer1(null);
+    setManualPlayer2(null);
+  };
+
+  const handleManualPairCancel = () => {
+    setShowManualPairing(false);
+    setManualPlayer1(null);
+    setManualPlayer2(null);
+  };
   
   // Get player status for the bottom table
   const getPlayerStatus = (player: Player): string => {
@@ -164,7 +210,157 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({ tournament, setTourname
           <div><strong>Available Players:</strong> {availablePlayers.length}</div>
           <div><strong>Tolerance:</strong> ±{tournament.swissTolerance} points</div>
         </div>
+        
+        {/* Manual Pairing Button */}
+        {availablePlayers.length >= 2 && (
+          <div style={{ marginTop: '15px' }}>
+            <button
+              onClick={() => setShowManualPairing(true)}
+              disabled={showManualPairing}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: showManualPairing ? '#6c757d' : '#17a2b8',
+                color: 'white',
+                border: 'none',
+                borderRadius: '5px',
+                fontSize: '14px',
+                cursor: showManualPairing ? 'not-allowed' : 'pointer'
+              }}
+            >
+              Manual Pair
+            </button>
+          </div>
+        )}
       </div>
+
+      {/* Manual Pairing Form */}
+      {showManualPairing && (
+        <div style={{ marginBottom: '25px' }}>
+          <div style={{ padding: '20px', backgroundColor: '#e7f3ff', border: '1px solid #bee5eb', borderRadius: '8px' }}>
+            <h3 style={{ margin: '0 0 15px 0', color: '#0c5460' }}>Manual Pairing</h3>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+              {/* Player 1 Selection */}
+              <div>
+                <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', color: '#495057' }}>
+                  Player 1:
+                </label>
+                <select
+                  value={manualPlayer1 || ''}
+                  onChange={(e) => {
+                    setManualPlayer1(e.target.value ? parseInt(e.target.value) : null);
+                    setManualPlayer2(null); // Reset player 2 when player 1 changes
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '8px',
+                    border: '1px solid #dee2e6',
+                    borderRadius: '4px',
+                    fontSize: '14px'
+                  }}
+                >
+                  <option value="">Select Player 1...</option>
+                  {availablePlayers.map(player => {
+                    const record = getPlayerRecord(player.id, tournament.matches);
+                    const roundsPlayed = getRoundsPlayed(player, tournament.matches);
+                    return (
+                      <option key={player.id} value={player.id}>
+                        {player.name} (R: {roundsPlayed}, W: {record.wins})
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+
+              {/* Player 2 Selection */}
+              <div>
+                <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', color: '#495057' }}>
+                  Player 2:
+                </label>
+                <select
+                  value={manualPlayer2 || ''}
+                  onChange={(e) => setManualPlayer2(e.target.value ? parseInt(e.target.value) : null)}
+                  disabled={!manualPlayer1}
+                  style={{
+                    width: '100%',
+                    padding: '8px',
+                    border: '1px solid #dee2e6',
+                    borderRadius: '4px',
+                    fontSize: '14px',
+                    backgroundColor: !manualPlayer1 ? '#f8f9fa' : 'white',
+                    cursor: !manualPlayer1 ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  <option value="">Select Player 2...</option>
+                  {manualPlayer1 && availablePlayers
+                    .filter(player => player.id !== manualPlayer1)
+                    .map(player => {
+                      const record = getPlayerRecord(player.id, tournament.matches);
+                      const roundsPlayed = getRoundsPlayed(player, tournament.matches);
+                      return (
+                        <option key={player.id} value={player.id}>
+                          {player.name} (R: {roundsPlayed}, W: {record.wins})
+                        </option>
+                      );
+                    })}
+                </select>
+              </div>
+            </div>
+
+            {/* Player Information Display */}
+            {manualPlayer1 && manualPlayer2 && (
+              <div style={{ marginBottom: '20px', padding: '15px', backgroundColor: 'white', borderRadius: '5px', border: '1px solid #dee2e6' }}>
+                <div style={{ fontWeight: 'bold', marginBottom: '10px', color: '#495057' }}>Pairing Information:</div>
+                <div style={{ fontSize: '14px', color: '#6c757d' }}>
+                  <div style={{ marginBottom: '5px' }}>
+                    <strong>Head-to-Head:</strong> {
+                      havePlayedBefore(manualPlayer1, manualPlayer2, tournament.matches)
+                        ? '⚠️ These players have played before'
+                        : '✅ These players have not played before'
+                    }
+                  </div>
+                  <div>
+                    <strong>Round:</strong> This will be Round {nextRound}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button
+                onClick={handleManualPairSubmit}
+                disabled={!manualPlayer1 || !manualPlayer2}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: (!manualPlayer1 || !manualPlayer2) ? '#6c757d' : '#28a745',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: (!manualPlayer1 || !manualPlayer2) ? 'not-allowed' : 'pointer',
+                  fontSize: '14px'
+                }}
+              >
+                Submit Pairing
+              </button>
+              <button
+                onClick={handleManualPairCancel}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: '#6c757d',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '14px'
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 2. Playing Pairs Section */}
       {activeMatches.length > 0 && (
