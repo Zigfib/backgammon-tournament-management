@@ -180,7 +180,7 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({
 
   // Manual pairing handlers
   const handleManualPairSubmit = () => {
-    if (!manualPlayer1 || !manualPlayer2) {
+    if (manualPlayer1 === null || manualPlayer2 === null) {
       alert("Please select both players");
       return;
     }
@@ -396,19 +396,20 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({
                         : null
                     )
                   }
-                  disabled={!manualPlayer1}
+                  disabled={manualPlayer1 === null}
                   style={{
                     width: "100%",
                     padding: "8px",
                     border: "1px solid #dee2e6",
                     borderRadius: "4px",
                     fontSize: "14px",
-                    backgroundColor: !manualPlayer1 ? "#f8f9fa" : "white",
-                    cursor: !manualPlayer1 ? "not-allowed" : "pointer",
+                    backgroundColor:
+                      manualPlayer1 === null ? "#f8f9fa" : "white",
+                    cursor: manualPlayer1 === null ? "not-allowed" : "pointer",
                   }}
                 >
                   <option value="">Select Player 2...</option>
-                  {manualPlayer1 &&
+                  {manualPlayer1 !== null &&
                     availablePlayers
                       .filter((player) => player.id !== manualPlayer1)
                       .map((player) => {
@@ -431,7 +432,7 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({
             </div>
 
             {/* Player Information Display */}
-            {manualPlayer1 && manualPlayer2 && (
+            {manualPlayer1 !== null && manualPlayer2 !== null && (
               <div
                 style={{
                   marginBottom: "20px",
@@ -472,16 +473,18 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({
             <div style={{ display: "flex", gap: "10px" }}>
               <button
                 onClick={handleManualPairSubmit}
-                disabled={!manualPlayer1 || !manualPlayer2}
+                disabled={manualPlayer1 === null || manualPlayer2 === null}
                 style={{
                   padding: "8px 16px",
                   backgroundColor:
-                    !manualPlayer1 || !manualPlayer2 ? "#6c757d" : "#28a745",
+                    manualPlayer1 === null || manualPlayer2 === null
+                      ? "#6c757d"
+                      : "#28a745",
                   color: "white",
                   border: "none",
                   borderRadius: "4px",
                   cursor:
-                    !manualPlayer1 || !manualPlayer2
+                    manualPlayer1 === null || manualPlayer2 === null
                       ? "not-allowed"
                       : "pointer",
                   fontSize: "14px",
