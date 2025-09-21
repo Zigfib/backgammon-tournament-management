@@ -379,3 +379,130 @@ export const generateSwissPairings = (tournament: Tournament): Tournament => {
     matches: [...tournament.matches, ...newMatches]
   };
 };
+
+// Utility functions for Swiss Dashboard
+export const getPlayerRecord = (playerId: number, matches: Match[]): { wins: number, losses: number } => {
+  const playerMatches = matches.filter(m => 
+    (m.player1 === playerId || m.player2 === playerId) && m.completed
+  );
+  
+  let wins = 0;
+  let losses = 0;
+  
+  playerMatches.forEach(match => {
+    if (match.player1Score === null || match.player2Score === null) return;
+    
+    const isPlayer1 = match.player1 === playerId;
+    const playerScore = isPlayer1 ? match.player1Score : match.player2Score;
+    const opponentScore = isPlayer1 ? match.player2Score : match.player1Score;
+    
+    if (playerScore > opponentScore) {
+      wins++;
+    } else {
+      losses++;
+    }
+  });
+  
+  return { wins, losses };
+};
+
+export const getNextRound = (tournament: Tournament): number => {
+  const maxRound = tournament.matches.length ? Math.max(...tournament.matches.map(m => m.round)) : 0;
+  const hasOpenInMaxRound = tournament.matches.some(m => m.round === maxRound && !m.completed);
+  return hasOpenInMaxRound ? maxRound : maxRound + 1;
+};
+
+export const getAvailablePlayers = (tournament: Tournament): Player[] => {
+  const activeMatches = tournament.matches.filter(m => !m.completed);
+  const playersInActiveMatches = new Set<number>();
+  
+  activeMatches.forEach(match => {
+    playersInActiveMatches.add(match.player1);
+    playersInActiveMatches.add(match.player2);
+  });
+  
+  return tournament.players.filter(player => 
+    !playersInActiveMatches.has(player.id) && 
+    getRoundsPlayed(player, tournament.matches) < tournament.numRounds
+  );
+};
+
+export const havePlayedBefore = (playerId1: number, playerId2: number, matches: Match[]): boolean => {
+  return matches.some(match => 
+    (match.player1 === playerId1 && match.player2 === playerId2) ||
+    (match.player1 === playerId2 && match.player2 === playerId1)
+  );
+};
+
+export const getProposedSwissPairings = (tournament: Tournament): { player1Id: number, player2Id: number, round: number }[] => {
+  const availablePlayers = getAvailablePlayers(tournament);
+  const nextRound = getNextRound(tournament);
+  
+  if (availablePlayers.length < 2) {
+    return [];
+  }
+  
+  // Group players by points (Swiss tournament principle)
+  const playersByPoints = new Map<number, Player[]>();
+  availablePlayers.forEach(player => {
+    const points = player.points;
+    if (!playersByPoints.has(points)) {
+      playersByPoints.set(points, []);
+    }
+    playersByPoints.get(points)!.push(player);
+  });
+  
+  // Sort point groups in descending order
+  const sortedPointGroups = Array.from(playersByPoints.entries()).sort((a, b) => b[0] - a[0]);
+  
+  const proposedPairs: { player1Id: number, player2Id: number, round: number }[] = [];
+  const usedPlayers = new Set<number>();
+  
+  // Create pairings within same score groups first
+  for (const [points, players] of sortedPointGroups) {
+    const availableInGroup = players.filter(p => !usedPlayers.has(p.id));
+    
+    for (let i = 0; i < availableInGroup.length - 1; i += 2) {
+      const player1 = availableInGroup[i];
+      const player2 = availableInGroup[i + 1];
+      
+      if (!havePlayedBefore(player1.id, player2.id, tournament.matches)) {
+        proposedPairs.push({
+          player1Id: player1.id,
+          player2Id: player2.id,
+          round: nextRound
+        });
+        usedPlayers.add(player1.id);
+        usedPlayers.add(player2.id);
+      }
+    }
+  }
+  
+  // Cross-group pairing for remaining players
+  const remainingPlayers = availablePlayers.filter(p => !usedPlayers.has(p.id));
+  
+  for (let i = 0; i < remainingPlayers.length - 1; i++) {
+    for (let j = i + 1; j < remainingPlayers.length; j++) {
+      const player1 = remainingPlayers[i];
+      const player2 = remainingPlayers[j];
+      
+      if (usedPlayers.has(player1.id) || usedPlayers.has(player2.id)) continue;
+      
+      const pointDifference = Math.abs(player1.points - player2.points);
+      
+      if (pointDifference <= tournament.swissTolerance && 
+          !havePlayedBefore(player1.id, player2.id, tournament.matches)) {
+        proposedPairs.push({
+          player1Id: player1.id,
+          player2Id: player2.id,
+          round: nextRound
+        });
+        usedPlayers.add(player1.id);
+        usedPlayers.add(player2.id);
+        break;
+      }
+    }
+  }
+  
+  return proposedPairs;
+};
