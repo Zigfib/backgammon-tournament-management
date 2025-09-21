@@ -1,417 +1,329 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  SwissTournament, 
-  PairingSuggestion, 
-  PairingScenario
-} from '../types';
-import { 
-  initiatePairingProcess, 
-  getPlayerStatus,
-  implementPairing,
-  getCurrentRound,
-  detectTournamentDeadlock,
-  recoverTournamentFromDeadlock
-} from '../utils/swiss';
+import React from "react";
+import { Tournament, Player, Match } from "../types";
+import { generateSwissPairings, getCurrentRound } from "../utils/tournament";
 
 interface SwissDashboardProps {
-  tournament: SwissTournament;
-  setTournament: React.Dispatch<React.SetStateAction<SwissTournament>>;
+  tournament: Tournament;
+  setTournament: React.Dispatch<React.SetStateAction<Tournament>>;
 }
 
-const SwissDashboard: React.FC<SwissDashboardProps> = ({ tournament, setTournament }) => {
-  const [pairingSuggestions, setPairingSuggestions] = useState<PairingSuggestion[]>([]);
-  const [scenario, setScenario] = useState<PairingScenario | null>(null);
-  const [autoRefresh, setAutoRefresh] = useState(true);
+interface PlayerStatus {
+  player: Player;
+  status: "playing" | "available" | "finished";
+  currentMatch?: Match;
+}
 
-  const [pairingResult, setPairingResult] = useState<{ canProceed: boolean; message: string } | null>(null);
+const SwissDashboard: React.FC<SwissDashboardProps> = ({
+  tournament,
+  setTournament,
+}) => {
+  // Get current player statuses
+  const getPlayerStatuses = (): PlayerStatus[] => {
+    const activeMatches = tournament.matches.filter((m) => !m.completed);
+    const playersInActiveMatches = new Set<number>();
 
-  // Update pairing suggestions when tournament changes
-  useEffect(() => {
-    if (autoRefresh) {
-      const result = initiatePairingProcess(tournament);
-      setPairingSuggestions(result.suggestions);
-      setScenario(result.scenario);
-      setPairingResult({ canProceed: result.canProceed, message: result.message });
-    }
-  }, [tournament, autoRefresh]);
+    // Track players currently playing
+    activeMatches.forEach((match) => {
+      playersInActiveMatches.add(match.player1);
+      playersInActiveMatches.add(match.player2);
+    });
 
-  const handleImplementAllPairings = () => {
-    // Check if we can proceed based on probability validation
-    if (!pairingResult?.canProceed) {
-      console.warn('Cannot implement pairings: probability of success < 100%');
+    return tournament.players.map((player) => {
+      // Find if player is in an active match
+      const currentMatch = activeMatches.find(
+        (m) => m.player1 === player.id || m.player2 === player.id
+      );
+
+      if (currentMatch) {
+        return { player, status: "playing", currentMatch };
+      }
+
+      // Check if player has completed all rounds
+      const playerMatches = tournament.matches.filter(
+        (m) =>
+          (m.player1 === player.id || m.player2 === player.id) && m.completed
+      );
+
+      if (playerMatches.length >= tournament.numRounds) {
+        return { player, status: "finished" };
+      }
+
+      return { player, status: "available" };
+    });
+  };
+
+  const playerStatuses = getPlayerStatuses();
+  const playingPlayers = playerStatuses.filter((ps) => ps.status === "playing");
+  const availablePlayers = playerStatuses.filter(
+    (ps) => ps.status === "available"
+  );
+  const finishedPlayers = playerStatuses.filter(
+    (ps) => ps.status === "finished"
+  );
+  const currentRound = getCurrentRound(tournament);
+
+  // Handle generating new pairings
+  const handleGeneratePairings = () => {
+    if (availablePlayers.length < 2) {
+      alert("Need at least 2 available players to generate pairings");
       return;
     }
-    
-    if (pairingSuggestions.length > 0) {
-      // Use the proper implementPairing function for each suggestion to ensure validation
-      let updatedTournament = { ...tournament };
-      
-      // Implement each pairing suggestion using the validated implementPairing function
-      for (const suggestion of pairingSuggestions) {
-        updatedTournament = implementPairing(updatedTournament, suggestion);
-      }
-      
-      setTournament(updatedTournament);
-    }
+
+    const updatedTournament = generateSwissPairings(tournament);
+    setTournament(updatedTournament);
   };
 
-  const handleRecoverTournament = () => {
-    console.log('🚨 User initiated tournament recovery');
-    const recoveredTournament = recoverTournamentFromDeadlock(tournament);
-    setTournament(recoveredTournament);
-  };
-
-  // Check if tournament is in deadlock state
-  const isDeadlocked = detectTournamentDeadlock(tournament);
-
-  const getStatusColor = (status: string): string => {
-    switch (status) {
-      case 'ready-to-pair': return '#28a745'; // Green
-      case 'playing': return '#ffc107'; // Yellow
-      case 'finished': return '#6c757d'; // Gray
-      case 'waiting': return '#17a2b8'; // Blue
-      default: return '#dee2e6';
-    }
-  };
-
-  const getStatusIcon = (status: string): string => {
-    switch (status) {
-      case 'ready-to-pair': return '🟢';
-      case 'playing': return '🟡';
-      case 'finished': return '⚫';
-      case 'waiting': return '🔵';
-      default: return '⚪';
-    }
-  };
-
-  // Fixed: For Swiss tournaments, completed matches should not be considered as currently playing
-  const completedMatches = tournament.matches.filter(m => m.completed);
-  const currentMatches = tournament.matches.filter(m => !m.completed && ('isCurrentlyPlaying' in m ? (m as any).isCurrentlyPlaying : false));
-  
-  // Update player statuses dynamically
-  const playersWithStatus = tournament.players.map(player => ({
-    ...player,
-    status: getPlayerStatus(player, tournament)
-  }));
-
-  // Determine if we're starting a new round or adding matches mid-round
-  const isNewRound = currentMatches.length === 0 && completedMatches.length > 0;
-  const isFirstRound = completedMatches.length === 0;
-  
-  const getButtonText = () => {
-    const matchCount = pairingSuggestions.length;
-    
-    if (isFirstRound) {
-      return `🚀 Start Tournament (${matchCount} match${matchCount > 1 ? 'es' : ''})`;
-    } else if (isNewRound) {
-      const nextRound = Math.max(...completedMatches.map(m => m.round)) + 1;
-      return `🚀 Start Round ${nextRound} (${matchCount} match${matchCount > 1 ? 'es' : ''})`;
-    } else {
-      return `▶️ Start Match${matchCount > 1 ? 'es' : ''} (${matchCount})`;
-    }
-  };
-
-  const statusCounts = playersWithStatus.reduce((counts, player) => {
-    counts[player.status] = (counts[player.status] || 0) + 1;
-    return counts;
-  }, {} as Record<string, number>);
+  // Check if we can generate new pairings
+  const canGeneratePairings = availablePlayers.length >= 2;
 
   return (
-    <div style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <h2>🏆 Rapid Swiss Tournament Dashboard</h2>
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-            <input 
-              type="checkbox" 
-              checked={autoRefresh}
-              onChange={(e) => setAutoRefresh(e.target.checked)}
-            />
-            Auto-refresh pairings
-          </label>
-          <button 
-            className="btn"
-            onClick={() => {
-              const result = initiatePairingProcess(tournament);
-              setPairingSuggestions(result.suggestions);
-              setScenario(result.scenario);
-              setPairingResult({ canProceed: result.canProceed, message: result.message });
-            }}
-          >
-            🔄 Refresh Pairings
-          </button>
+    <div className="swiss-dashboard">
+      <div style={{ marginBottom: "20px" }}>
+        <h2>Swiss Tournament Dashboard</h2>
+        <div
+          style={{
+            marginBottom: "15px",
+            padding: "10px",
+            backgroundColor: "#f5f5f5",
+            borderRadius: "5px",
+          }}
+        >
+          <strong>
+            Round {currentRound} of {tournament.numRounds}
+          </strong>
+          <span style={{ marginLeft: "20px" }}>
+            Tolerance: ±{tournament.swissTolerance} points
+          </span>
         </div>
       </div>
 
-      {/* Tournament Status Overview */}
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
-        gap: '15px', 
-        marginBottom: '30px' 
-      }}>
-        <div style={{ 
-          background: '#f8f9fa', 
-          padding: '15px', 
-          borderRadius: '8px', 
-          border: '1px solid #dee2e6' 
-        }}>
-          <h4 style={{ margin: '0 0 10px 0', color: '#495057' }}>Tournament Progress</h4>
-          <p><strong>Round:</strong> {getCurrentRound(tournament)} / {tournament.maxRounds} 
-            {(() => {
-              const currentRound = getCurrentRound(tournament);
-              const activeRounds = Array.from(new Set(tournament.matches
-                .filter(m => !m.completed && m.isCurrentlyPlaying)
-                .map(m => m.round)));
-              
-              console.log(`Display logic debug: currentRound=${currentRound}, maxRounds=${tournament.maxRounds}, activeRounds=[${activeRounds.join(',')}]`);
-              
-              // Check if tournament is actually complete (all players finished all rounds)
-              const allPlayersFinished = tournament.players.every(p => p.roundsPlayed >= tournament.maxRounds);
-              
-              if (allPlayersFinished) {
-                return ' ✅ TOURNAMENT COMPLETE';
-              } else if (currentRound === tournament.maxRounds && activeRounds.length === 1) {
-                return ' 🏁 FINAL ROUND';
-              } else if (activeRounds.length > 1) {
-                return ` (${activeRounds.length} rounds active)`;
-              } else if (activeRounds.length === 0) {
-                return ' (pairing needed)';
-              }
-              return '';
-            })()}
-          </p>
-          <p><strong>Matches:</strong> {completedMatches.length} completed, {currentMatches.length} playing</p>
+      {/* Generate Pairings Section */}
+      {availablePlayers.length > 0 && (
+        <div style={{ marginBottom: "20px" }}>
+          <button
+            onClick={handleGeneratePairings}
+            disabled={!canGeneratePairings}
+            style={{
+              padding: "10px 20px",
+              backgroundColor: canGeneratePairings ? "#4CAF50" : "#cccccc",
+              color: "white",
+              border: "none",
+              borderRadius: "5px",
+              fontSize: "16px",
+              cursor: canGeneratePairings ? "pointer" : "not-allowed",
+            }}
+          >
+            Generate New Pairings ({availablePlayers.length} available)
+          </button>
+        </div>
+      )}
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+          gap: "20px",
+        }}
+      >
+        {/* Currently Playing */}
+        <div className="status-section">
+          <h3 style={{ color: "#ff6b6b", marginBottom: "10px" }}>
+            Currently Playing ({playingPlayers.length})
+          </h3>
+          <div
+            style={{
+              backgroundColor: "#fff5f5",
+              padding: "15px",
+              borderRadius: "5px",
+              border: "1px solid #ffcccb",
+            }}
+          >
+            {playingPlayers.length === 0 ? (
+              <p style={{ color: "#666", fontStyle: "italic" }}>
+                No matches in progress
+              </p>
+            ) : (
+              playingPlayers.map(({ player, currentMatch }) => (
+                <div
+                  key={player.id}
+                  style={{
+                    marginBottom: "10px",
+                    padding: "8px",
+                    backgroundColor: "white",
+                    borderRadius: "3px",
+                  }}
+                >
+                  <strong>{player.name}</strong> ({player.points} pts)
+                  {currentMatch && (
+                    <div style={{ fontSize: "0.9em", color: "#666" }}>
+                      vs{" "}
+                      {
+                        tournament.players.find(
+                          (p) =>
+                            p.id ===
+                            (currentMatch.player1 === player.id
+                              ? currentMatch.player2
+                              : currentMatch.player1)
+                        )?.name
+                      }{" "}
+                      - Round {currentMatch.round}
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
         </div>
 
-        <div style={{ 
-          background: '#f8f9fa', 
-          padding: '15px', 
-          borderRadius: '8px', 
-          border: '1px solid #dee2e6' 
-        }}>
-          <h4 style={{ margin: '0 0 10px 0', color: '#495057' }}>Player Status</h4>
-          {Object.entries(statusCounts).map(([status, count]) => (
-            <p key={status} style={{ margin: '5px 0' }}>
-              {getStatusIcon(status)} <strong>{status.replace('-', ' ')}:</strong> {count}
-            </p>
-          ))}
+        {/* Available for Pairing */}
+        <div className="status-section">
+          <h3 style={{ color: "#4CAF50", marginBottom: "10px" }}>
+            Available for Pairing ({availablePlayers.length})
+          </h3>
+          <div
+            style={{
+              backgroundColor: "#f5fff5",
+              padding: "15px",
+              borderRadius: "5px",
+              border: "1px solid #ccffcc",
+            }}
+          >
+            {availablePlayers.length === 0 ? (
+              <p style={{ color: "#666", fontStyle: "italic" }}>
+                No players waiting
+              </p>
+            ) : (
+              <div>
+                {availablePlayers.map(({ player }) => (
+                  <div
+                    key={player.id}
+                    style={{
+                      marginBottom: "8px",
+                      padding: "8px",
+                      backgroundColor: "white",
+                      borderRadius: "3px",
+                    }}
+                  >
+                    <strong>{player.name}</strong> ({player.points} pts)
+                    <div style={{ fontSize: "0.9em", color: "#666" }}>
+                      ELO: {player.currentElo}
+                    </div>
+                  </div>
+                ))}
+
+                {availablePlayers.length >= 2 && (
+                  <div
+                    style={{
+                      marginTop: "15px",
+                      padding: "10px",
+                      backgroundColor: "#e8f5e8",
+                      borderRadius: "3px",
+                    }}
+                  >
+                    <strong>Proposed Pairings:</strong>
+                    <div style={{ marginTop: "5px", fontSize: "0.9em" }}>
+                      {/* Group by points for pairing preview */}
+                      {(() => {
+                        const byPoints = availablePlayers.reduce((acc, ps) => {
+                          const points = ps.player.points;
+                          if (!acc[points]) acc[points] = [];
+                          acc[points].push(ps.player);
+                          return acc;
+                        }, {} as Record<number, Player[]>);
+
+                        return Object.entries(byPoints)
+                          .sort((a, b) => parseInt(b[0]) - parseInt(a[0]))
+                          .map(([points, players]) => (
+                            <div key={points} style={{ marginBottom: "5px" }}>
+                              <span style={{ fontWeight: "bold" }}>
+                                {points} pts:
+                              </span>{" "}
+                              {players.map((p) => p.name).join(" vs ")}
+                            </div>
+                          ));
+                      })()}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
-        {scenario && (
-          <div style={{ 
-            background: '#f8f9fa', 
-            padding: '15px', 
-            borderRadius: '8px', 
-            border: '1px solid #dee2e6' 
-          }}>
-            <h4 style={{ margin: '0 0 10px 0', color: '#495057' }}>Algorithm Validation</h4>
-            <p><strong>Success Rate:</strong> {Math.round(scenario.probabilityOfSuccess * 100)}% 
-              {scenario.probabilityOfSuccess === 1.0 && ' ✅'}
-            </p>
-            <p><strong>Active Matches:</strong> {scenario.currentMatches.length}</p>
-            <p><strong>Scenarios Tested:</strong> {scenario.possibleOutcomes.length || 'None (no active matches)'}</p>
+        {/* Tournament Complete */}
+        {finishedPlayers.length > 0 && (
+          <div className="status-section">
+            <h3 style={{ color: "#666", marginBottom: "10px" }}>
+              Tournament Complete ({finishedPlayers.length})
+            </h3>
+            <div
+              style={{
+                backgroundColor: "#f9f9f9",
+                padding: "15px",
+                borderRadius: "5px",
+                border: "1px solid #ddd",
+              }}
+            >
+              {finishedPlayers.map(({ player }) => (
+                <div
+                  key={player.id}
+                  style={{
+                    marginBottom: "8px",
+                    padding: "8px",
+                    backgroundColor: "white",
+                    borderRadius: "3px",
+                  }}
+                >
+                  <strong>{player.name}</strong> ({player.points} pts)
+                  <div style={{ fontSize: "0.9em", color: "#666" }}>
+                    Final ELO: {player.currentElo} (
+                    {player.currentElo >= player.startingElo ? "+" : ""}
+                    {player.currentElo - player.startingElo})
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>
 
-      {/* Tournament Recovery Section */}
-      {isDeadlocked && (
-        <div style={{ 
-          padding: '20px', 
-          borderRadius: '8px', 
-          marginBottom: '30px',
-          backgroundColor: '#f8d7da',
-          border: '1px solid #f5c6cb'
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-            <div>
-              <h4 style={{ margin: '0 0 5px 0', color: '#721c24' }}>🚨 Tournament Deadlock Detected</h4>
-              <p style={{ margin: '0', color: '#721c24' }}>
-                The tournament is stuck because some players finished while others are still in earlier rounds. Click to recover.
-              </p>
-            </div>
-            <button 
-              className="btn"
-              style={{ 
-                backgroundColor: '#dc3545', 
-                color: 'white', 
-                border: 'none',
-                padding: '12px 20px',
-                fontSize: '1em',
-                fontWeight: 'bold'
-              }}
-              onClick={handleRecoverTournament}
-            >
-              🔧 Recover Tournament
-            </button>
+      {/* Tournament Progress */}
+      <div
+        style={{
+          marginTop: "20px",
+          padding: "15px",
+          backgroundColor: "#f0f8ff",
+          borderRadius: "5px",
+          border: "1px solid #add8e6",
+        }}
+      >
+        <h4 style={{ margin: "0 0 10px 0" }}>Tournament Progress</h4>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+            gap: "10px",
+          }}
+        >
+          <div>
+            <strong>Completed Matches:</strong>
+            <br />
+            {tournament.matches.filter((m) => m.completed).length} /{" "}
+            {tournament.matches.length}
           </div>
-        </div>
-      )}
-
-      {/* Round Pairing Section */}
-      {pairingSuggestions.length > 0 && !isDeadlocked && pairingResult?.canProceed && (
-        <div style={{ 
-          padding: '20px', 
-          borderRadius: '8px', 
-          marginBottom: '30px',
-          backgroundColor: '#d4edda',
-          border: '1px solid #c3e6cb'
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-            <div>
-              <h4 style={{ margin: '0 0 5px 0', color: '#155724' }}>Complete Round Ready</h4>
-              <p style={{ margin: '0', color: '#155724' }}>
-                {pairingSuggestions.length} pairing{pairingSuggestions.length > 1 ? 's' : ''} available for this round
-              </p>
-            </div>
-            <button 
-              className="btn"
-              style={{ 
-                backgroundColor: pairingResult?.canProceed ? '#28a745' : '#6c757d', 
-                color: 'white', 
-                border: 'none',
-                padding: '12px 20px',
-                fontSize: '1em',
-                fontWeight: 'bold'
-              }}
-              onClick={handleImplementAllPairings}
-              disabled={!pairingResult?.canProceed}
-            >
-              {getButtonText()}
-            </button>
+          <div>
+            <strong>Players Finished:</strong>
+            <br />
+            {finishedPlayers.length} / {tournament.players.length}
           </div>
-          
-          {/* Show all pairings with individual start buttons */}
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', 
-            gap: '10px' 
-          }}>
-            {pairingSuggestions.map((suggestion, index) => {
-              const player1 = tournament.players.find(p => p.id === suggestion.player1Id);
-              const player2 = tournament.players.find(p => p.id === suggestion.player2Id);
-              return (
-                <div key={`${suggestion.player1Id}-${suggestion.player2Id}`} style={{ 
-                  background: '#f8fff9', 
-                  padding: '12px', 
-                  borderRadius: '6px', 
-                  border: '1px solid #c3e6cb',
-                  fontSize: '0.9em',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '8px'
-                }}>
-                  <div>
-                    <strong>{player1?.name}</strong> vs <strong>{player2?.name}</strong>
-                    <div style={{ fontSize: '0.8em', color: '#666', marginTop: '3px' }}>
-                      {suggestion.reason}
-                    </div>
-                  </div>
-                  <button 
-                    disabled={!pairingResult?.canProceed}
-                    style={{ 
-                      backgroundColor: !pairingResult?.canProceed ? '#6c757d' : '#17a2b8', 
-                      color: 'white', 
-                      border: 'none',
-                      padding: '6px 12px',
-                      borderRadius: '4px',
-                      fontSize: '0.8em',
-                      cursor: !pairingResult?.canProceed ? 'not-allowed' : 'pointer',
-                      alignSelf: 'flex-start',
-                      opacity: !pairingResult?.canProceed ? 0.6 : 1
-                    }}
-                    onClick={() => {
-                      // Check if we can proceed based on probability validation
-                      if (!pairingResult?.canProceed) {
-                        console.warn('Cannot implement pairing: probability of success < 100%');
-                        return;
-                      }
-                      const updatedTournament = implementPairing(tournament, suggestion);
-                      setTournament(updatedTournament);
-                    }}
-                  >
-                    ▶️ Start This Match
-                  </button>
-                </div>
-              );
-            })}
+          <div>
+            <strong>Average Points:</strong>
+            <br />
+            {(
+              tournament.players.reduce((sum, p) => sum + p.points, 0) /
+              tournament.players.length
+            ).toFixed(1)}
           </div>
-        </div>
-      )}
-
-      {/* Current Matches */}
-      {currentMatches.length > 0 && (
-        <div style={{ marginBottom: '30px' }}>
-          <h3>🟡 Current Matches in Progress</h3>
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', 
-            gap: '15px' 
-          }}>
-            {currentMatches.map(match => {
-              const player1 = tournament.players.find(p => p.id === match.player1);
-              const player2 = tournament.players.find(p => p.id === match.player2);
-              return (
-                <div key={match.id} style={{ 
-                  background: '#fff3cd', 
-                  padding: '15px', 
-                  borderRadius: '8px', 
-                  border: '1px solid #ffeaa7' 
-                }}>
-                  <h4 style={{ margin: '0 0 10px 0' }}>Round {match.round}</h4>
-                  <p><strong>{player1?.name}</strong> vs <strong>{player2?.name}</strong></p>
-                  <p style={{ fontSize: '0.9em', color: '#666' }}>
-                    Started: {match.startTime ? new Date(match.startTime).toLocaleTimeString() : 'Unknown'}
-                  </p>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-
-      {/* Player Status Grid */}
-      <div>
-        <h3>👥 Player Status Overview</h3>
-        <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', 
-          gap: '10px' 
-        }}>
-          {playersWithStatus.map(player => (
-            <div key={player.id} style={{ 
-              background: '#f8f9fa',
-              padding: '12px', 
-              borderRadius: '8px', 
-              border: `2px solid ${getStatusColor(player.status)}`,
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center'
-            }}>
-              <div>
-                <strong>{player.name}</strong>
-                <div style={{ fontSize: '0.9em', color: '#666' }}>
-                  Round: {player.currentRound} | Points: {player.pointsEarned} | ELO: {player.currentElo}
-                </div>
-                <div style={{ fontSize: '0.8em', color: '#666' }}>
-                  Record: {player.totalWins}W-{player.totalLosses}L
-                </div>
-              </div>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '1.2em' }}>{getStatusIcon(player.status)}</div>
-                <div style={{ 
-                  fontSize: '0.8em', 
-                  fontWeight: 'bold',
-                  color: getStatusColor(player.status),
-                  textTransform: 'capitalize'
-                }}>
-                  {player.status.replace('-', ' ')}
-                </div>
-              </div>
-            </div>
-          ))}
         </div>
       </div>
     </div>
