@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Tournament, Player } from '../types';
 import { getRoundsPlayed, getPlayerRecord, getNextRound, getAvailablePlayers, getProposedSwissPairings, updateMatchResult } from '../utils/tournament';
+import { calculateStandardRanking } from '../utils/ranking';
 
 interface SwissDashboardProps {
   tournament: Tournament;
@@ -408,12 +409,13 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({ tournament, setTourname
                 <th style={{ padding: '12px', textAlign: 'center', border: '1px solid #dee2e6' }}>Wins</th>
                 <th style={{ padding: '12px', textAlign: 'center', border: '1px solid #dee2e6' }}>Losses</th>
                 <th style={{ padding: '12px', textAlign: 'center', border: '1px solid #dee2e6' }}>Points</th>
+                <th style={{ padding: '12px', textAlign: 'center', border: '1px solid #dee2e6' }}>TB1</th>
+                <th style={{ padding: '12px', textAlign: 'center', border: '1px solid #dee2e6' }}>TB2</th>
                 <th style={{ padding: '12px', textAlign: 'center', border: '1px solid #dee2e6' }}>ELO</th>
               </tr>
             </thead>
             <tbody>
-              {[...tournament.players]
-                .sort((a, b) => b.points - a.points || b.goalDiff - a.goalDiff)
+              {calculateStandardRanking(tournament.players, tournament.results)
                 .map(player => {
                   const record = getPlayerRecord(player.id, tournament.matches);
                   const roundsPlayed = getRoundsPlayed(player, tournament.matches);
@@ -441,6 +443,16 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({ tournament, setTourname
                       </td>
                       <td style={{ padding: '10px', border: '1px solid #dee2e6', textAlign: 'center', fontWeight: 'bold' }}>
                         {player.points}
+                      </td>
+                      <td style={{ padding: '10px', border: '1px solid #dee2e6', textAlign: 'center' }}>
+                        <span style={{ fontSize: '12px', color: '#6c757d' }} title="Head-to-Head: Wins vs players with same points">
+                          {player.tiebreakers.winsAgainstSamePoints}
+                        </span>
+                      </td>
+                      <td style={{ padding: '10px', border: '1px solid #dee2e6', textAlign: 'center' }}>
+                        <span style={{ fontSize: '12px', color: '#6c757d' }} title="Buchholz: Sum of opponents' points">
+                          {player.tiebreakers.buchholzScore}
+                        </span>
                       </td>
                       <td style={{ padding: '10px', border: '1px solid #dee2e6', textAlign: 'center' }}>
                         {player.currentElo}
