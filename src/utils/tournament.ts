@@ -214,13 +214,13 @@ export const updateMatchResult = (tournament: Tournament, matchId: number, playe
   
   // If a match was just completed AND this is a rapid swiss tournament, trigger Swiss pairing generation
   if (updatedMatch.completed && updatedMatch.player1Score !== null && updatedMatch.player2Score !== null && updatedTournament.tournamentType === 'rapid-swiss') {
-    console.log('Match completed in rapid swiss tournament, triggering Swiss pairing generation...');
+    console.log('Match completed in rapid swiss tournament - check Proposed Pairings section for next round options');
     
-    // CRITICAL: Recalculate player stats (including points) before Swiss pairing
+    // CRITICAL: Recalculate player stats (including points) after match completion
     const playersWithStats = calculateStats(updatedTournament.players, updatedTournament.matches);
     const tournamentWithStats = { ...updatedTournament, players: playersWithStats };
     
-    return generateSwissPairings(tournamentWithStats);
+    return tournamentWithStats;
   }
   
   return updatedTournament;
