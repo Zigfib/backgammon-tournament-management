@@ -72,6 +72,7 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({ tournament, setTourname
     const currentScore = player === 'player1' ? scores.player1Score : scores.player2Score;
     const otherScore = player === 'player1' ? scores.player2Score : scores.player1Score;
 
+    // If the OTHER player has a score less than max and the CURRENT field is empty, auto-fill current field with max
     if (otherScore && parseInt(otherScore) < tournament.maxPoints && !currentScore) {
       setPendingScores(prev => ({
         ...prev,
@@ -90,10 +91,16 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({ tournament, setTourname
     const p1Score = parseInt(scores.player1Score);
     const p2Score = parseInt(scores.player2Score);
     
+    // Check if scores are valid numbers
     if (isNaN(p1Score) || isNaN(p2Score)) return false;
+    
+    // Check if scores are within valid range
     if (p1Score < 0 || p2Score < 0 || p1Score > tournament.maxPoints || p2Score > tournament.maxPoints) return false;
+    
+    // Prevent 0-0 scores
     if (p1Score === 0 && p2Score === 0) return false;
     
+    // One score must be the maximum, the other must be lower
     return (p1Score === tournament.maxPoints && p2Score < tournament.maxPoints) ||
            (p2Score === tournament.maxPoints && p1Score < tournament.maxPoints);
   };
@@ -207,6 +214,7 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({ tournament, setTourname
                             max={tournament.maxPoints}
                             value={scores?.player1Score || ''}
                             onChange={(e) => handleScoreChange(match.id, 'player1', e.target.value)}
+                            onFocus={() => handleAutoComplete(match.id, 'player1')}
                             onBlur={() => handleAutoComplete(match.id, 'player1')}
                             placeholder="0"
                             style={{
@@ -234,6 +242,7 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({ tournament, setTourname
                             max={tournament.maxPoints}
                             value={scores?.player2Score || ''}
                             onChange={(e) => handleScoreChange(match.id, 'player2', e.target.value)}
+                            onFocus={() => handleAutoComplete(match.id, 'player2')}
                             onBlur={() => handleAutoComplete(match.id, 'player2')}
                             placeholder="0"
                             style={{
