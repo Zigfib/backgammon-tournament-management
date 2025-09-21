@@ -21,6 +21,7 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({
   const activeMatches = tournament.matches.filter((m) => !m.completed);
   const availablePlayers = getAvailablePlayers(tournament);
   const proposedPairings = getProposedSwissPairings(tournament);
+  console.log('SwissDashboard: proposedPairings =', proposedPairings);
   const nextRound = getNextRound(tournament);
   const completedMatches = tournament.matches.filter((m) => m.completed).length;
 
