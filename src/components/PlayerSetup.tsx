@@ -1,6 +1,6 @@
 import React from 'react';
 import { Tournament, Match } from '../types';
-import { generateSwissPairings, calculateStats } from '../utils/tournament';
+// No longer need these imports since Swiss tournaments start with empty matches
 
 interface PlayerSetupProps {
   tournament: Tournament;
@@ -68,16 +68,9 @@ const PlayerSetup: React.FC<PlayerSetupProps> = ({
 
       // Generate matches based on tournament type
       if (prev.tournamentType === 'rapid-swiss') {
-        // For rapid swiss, generate initial round 1 pairings
-        console.log('Generating initial Swiss pairings...');
-        
-        // Calculate stats for initial state (all players at 0 points)
-        const playersWithStats = calculateStats(updatedPlayers, []);
-        const tournamentWithStats = { ...newTournament, players: playersWithStats };
-        
-        // Generate first round Swiss pairings
-        newTournament = generateSwissPairings(tournamentWithStats);
-        console.log('Generated Swiss matches:', newTournament.matches.length);
+        // For rapid swiss, start with empty matches - proposed pairings will be shown in Swiss Dashboard
+        console.log('Starting Swiss tournament with empty matches - pairings will be proposed in dashboard');
+        // newTournament already has empty matches array
       } else {
         // For round-robin, generate all matches
         const matches: Match[] = [];
