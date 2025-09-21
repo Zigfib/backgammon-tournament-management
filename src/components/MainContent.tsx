@@ -17,11 +17,18 @@ const MainContent: React.FC<MainContentProps> = ({
   setTournament,
 }) => {
   // Default to Swiss dashboard for Swiss tournaments, otherwise matches
-  const defaultTab =
-    tournament.tournamentType === "rapid-swiss" ? "swiss" : "matches";
   const [activeTab, setActiveTab] = useState<
     "swiss" | "matches" | "table" | "standings" | "stats"
-  >(defaultTab);
+  >("matches");
+
+  // Update active tab when tournament type changes
+  useEffect(() => {
+    if (tournament.tournamentType === "rapid-swiss") {
+      setActiveTab("swiss");
+    } else {
+      setActiveTab("matches");
+    }
+  }, [tournament.tournamentType]);
 
   // Update stats whenever tournament changes
   useEffect(() => {
