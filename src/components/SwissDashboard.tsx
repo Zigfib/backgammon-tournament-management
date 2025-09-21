@@ -170,130 +170,165 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({ tournament, setTourname
         <div style={{ marginBottom: '25px' }}>
           <h3 style={{ margin: '0 0 15px 0', color: '#dc3545' }}>Playing Pairs</h3>
           <div style={{ backgroundColor: '#fff5f5', border: '1px solid #f5c6cb', borderRadius: '8px', padding: '15px' }}>
-            {activeMatches.map(match => {
-              const player1 = tournament.players[match.player1];
-              const player2 = tournament.players[match.player2];
-              const isEditing = editingMatch === match.id;
-              const scores = pendingScores[match.id];
+            {(() => {
+              // Group matches by round and add visual separation
+              const matchesByRound = new Map<number, typeof activeMatches>();
+              activeMatches.forEach(match => {
+                if (!matchesByRound.has(match.round)) {
+                  matchesByRound.set(match.round, []);
+                }
+                matchesByRound.get(match.round)!.push(match);
+              });
               
-              return (
-                <div key={match.id} style={{ marginBottom: '8px', backgroundColor: 'white', borderRadius: '5px', border: '1px solid #e9ecef' }}>
-                  {!isEditing ? (
-                    <div 
-                      onClick={() => handleMatchClick(match.id)}
-                      style={{ 
-                        padding: '10px',
-                        cursor: 'pointer',
-                        transition: 'background-color 0.2s',
-                      }}
-                      onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'}
-                      onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'white'}
-                    >
-                      <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
-                        {player1.name} ({player1.points} pts) vs {player2.name} ({player2.points} pts)
-                      </div>
-                      <div style={{ fontSize: '13px', color: '#6c757d' }}>
-                        Round {match.round} • ELO: {player1.currentElo} vs {player2.currentElo} • Click to enter scores
-                      </div>
-                    </div>
-                  ) : (
-                    <div style={{ padding: '15px' }}>
-                      <div style={{ fontWeight: 'bold', marginBottom: '10px' }}>
-                        Enter Scores - Round {match.round}
-                      </div>
-                      
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: '15px', alignItems: 'center', marginBottom: '15px' }}>
-                        {/* Player 1 Score Input */}
-                        <div>
-                          <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>
-                            {player1.name}
-                          </div>
-                          <input
-                            type="number"
-                            min="0"
-                            max={tournament.maxPoints}
-                            value={scores?.player1Score || ''}
-                            onChange={(e) => handleScoreChange(match.id, 'player1', e.target.value)}
-                            onFocus={() => handleAutoComplete(match.id, 'player1')}
-                            onBlur={() => handleAutoComplete(match.id, 'player1')}
-                            placeholder="0"
-                            style={{
-                              width: '80px',
-                              padding: '8px',
-                              border: '2px solid #dee2e6',
-                              borderRadius: '4px',
-                              fontSize: '16px',
-                              textAlign: 'center'
-                            }}
-                          />
-                        </div>
-                        
-                        {/* VS divider */}
-                        <div style={{ fontWeight: 'bold', color: '#6c757d' }}>vs</div>
-                        
-                        {/* Player 2 Score Input */}
-                        <div>
-                          <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>
-                            {player2.name}
-                          </div>
-                          <input
-                            type="number"
-                            min="0"
-                            max={tournament.maxPoints}
-                            value={scores?.player2Score || ''}
-                            onChange={(e) => handleScoreChange(match.id, 'player2', e.target.value)}
-                            onFocus={() => handleAutoComplete(match.id, 'player2')}
-                            onBlur={() => handleAutoComplete(match.id, 'player2')}
-                            placeholder="0"
-                            style={{
-                              width: '80px',
-                              padding: '8px',
-                              border: '2px solid #dee2e6',
-                              borderRadius: '4px',
-                              fontSize: '16px',
-                              textAlign: 'center'
-                            }}
-                          />
-                        </div>
-                      </div>
-                      
-                      {/* Action buttons */}
-                      <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-                        <button
-                          onClick={handleCancelScore}
-                          style={{
-                            padding: '8px 16px',
-                            backgroundColor: '#6c757d',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            fontSize: '14px'
-                          }}
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          onClick={() => handleSubmitScore(match.id)}
-                          disabled={!isValidScore(match.id)}
-                          style={{
-                            padding: '8px 16px',
-                            backgroundColor: isValidScore(match.id) ? '#28a745' : '#dee2e6',
-                            color: isValidScore(match.id) ? 'white' : '#6c757d',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: isValidScore(match.id) ? 'pointer' : 'not-allowed',
-                            fontSize: '14px'
-                          }}
-                        >
-                          Submit Score
-                        </button>
-                      </div>
+              // Sort rounds
+              const sortedRounds = Array.from(matchesByRound.keys()).sort((a, b) => a - b);
+              
+              return sortedRounds.map((round, roundIndex) => (
+                <div key={round}>
+                  {/* Add spacing between different rounds */}
+                  {roundIndex > 0 && <div style={{ height: '20px' }} />}
+                  
+                  {/* Round header (only show if there are multiple rounds) */}
+                  {sortedRounds.length > 1 && (
+                    <div style={{ 
+                      fontWeight: 'bold', 
+                      fontSize: '14px', 
+                      color: '#495057', 
+                      marginBottom: '8px',
+                      paddingLeft: '5px'
+                    }}>
+                      Round {round}
                     </div>
                   )}
+                  
+                  {/* Matches for this round */}
+                  {matchesByRound.get(round)!.map(match => {
+                    const player1 = tournament.players[match.player1];
+                    const player2 = tournament.players[match.player2];
+                    const isEditing = editingMatch === match.id;
+                    const scores = pendingScores[match.id];
+                    
+                    return (
+                      <div key={match.id} style={{ marginBottom: '8px', backgroundColor: 'white', borderRadius: '5px', border: '1px solid #e9ecef' }}>
+                        {!isEditing ? (
+                          <div 
+                            onClick={() => handleMatchClick(match.id)}
+                            style={{ 
+                              padding: '10px',
+                              cursor: 'pointer',
+                              transition: 'background-color 0.2s',
+                            }}
+                            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'}
+                            onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'white'}
+                          >
+                            <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
+                              {player1.name} ({player1.points} pts) vs {player2.name} ({player2.points} pts)
+                            </div>
+                            <div style={{ fontSize: '13px', color: '#6c757d' }}>
+                              Round {match.round} • ELO: {player1.currentElo} vs {player2.currentElo} • Click to enter scores
+                            </div>
+                          </div>
+                        ) : (
+                          <div style={{ padding: '15px' }}>
+                            <div style={{ fontWeight: 'bold', marginBottom: '10px' }}>
+                              Enter Scores - Round {match.round}
+                            </div>
+                            
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: '15px', alignItems: 'center', marginBottom: '15px' }}>
+                              {/* Player 1 Score Input */}
+                              <div>
+                                <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>
+                                  {player1.name}
+                                </div>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max={tournament.maxPoints}
+                                  value={scores?.player1Score || ''}
+                                  onChange={(e) => handleScoreChange(match.id, 'player1', e.target.value)}
+                                  onFocus={() => handleAutoComplete(match.id, 'player1')}
+                                  onBlur={() => handleAutoComplete(match.id, 'player1')}
+                                  placeholder="0"
+                                  style={{
+                                    width: '80px',
+                                    padding: '8px',
+                                    border: '2px solid #dee2e6',
+                                    borderRadius: '4px',
+                                    fontSize: '16px',
+                                    textAlign: 'center'
+                                  }}
+                                />
+                              </div>
+                              
+                              {/* VS divider */}
+                              <div style={{ fontWeight: 'bold', color: '#6c757d' }}>vs</div>
+                              
+                              {/* Player 2 Score Input */}
+                              <div>
+                                <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>
+                                  {player2.name}
+                                </div>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max={tournament.maxPoints}
+                                  value={scores?.player2Score || ''}
+                                  onChange={(e) => handleScoreChange(match.id, 'player2', e.target.value)}
+                                  onFocus={() => handleAutoComplete(match.id, 'player2')}
+                                  onBlur={() => handleAutoComplete(match.id, 'player2')}
+                                  placeholder="0"
+                                  style={{
+                                    width: '80px',
+                                    padding: '8px',
+                                    border: '2px solid #dee2e6',
+                                    borderRadius: '4px',
+                                    fontSize: '16px',
+                                    textAlign: 'center'
+                                  }}
+                                />
+                              </div>
+                            </div>
+                            
+                            {/* Action buttons */}
+                            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                              <button
+                                onClick={handleCancelScore}
+                                style={{
+                                  padding: '8px 16px',
+                                  backgroundColor: '#6c757d',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '4px',
+                                  cursor: 'pointer',
+                                  fontSize: '14px'
+                                }}
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                onClick={() => handleSubmitScore(match.id)}
+                                disabled={!isValidScore(match.id)}
+                                style={{
+                                  padding: '8px 16px',
+                                  backgroundColor: isValidScore(match.id) ? '#28a745' : '#dee2e6',
+                                  color: isValidScore(match.id) ? 'white' : '#6c757d',
+                                  border: 'none',
+                                  borderRadius: '4px',
+                                  cursor: isValidScore(match.id) ? 'pointer' : 'not-allowed',
+                                  fontSize: '14px'
+                                }}
+                              >
+                                Submit Score
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
-              );
-            })}
+              ));
+            })()}
           </div>
         </div>
       )}
