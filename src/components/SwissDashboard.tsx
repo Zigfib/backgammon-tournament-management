@@ -246,9 +246,9 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({ tournament, setTourname
                   Player 1:
                 </label>
                 <select
-                  value={manualPlayer1 !== null ? manualPlayer1 : ''}
+                  value={manualPlayer1 !== null ? manualPlayer1 + 1 : ''}
                   onChange={(e) => {
-                    setManualPlayer1(e.target.value !== '' ? parseInt(e.target.value) : null);
+                    setManualPlayer1(e.target.value !== '' ? parseInt(e.target.value) - 1 : null);
                     setManualPlayer2(null); // Reset player 2 when player 1 changes
                   }}
                   style={{
@@ -264,7 +264,7 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({ tournament, setTourname
                     const record = getPlayerRecord(player.id, tournament.matches);
                     const roundsPlayed = getRoundsPlayed(player, tournament.matches);
                     return (
-                      <option key={player.id} value={player.id}>
+                      <option key={player.id} value={player.id + 1}>
                         {player.name} (R: {roundsPlayed}, W: {record.wins})
                       </option>
                     );
@@ -278,8 +278,8 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({ tournament, setTourname
                   Player 2:
                 </label>
                 <select
-                  value={manualPlayer2 !== null ? manualPlayer2 : ''}
-                  onChange={(e) => setManualPlayer2(e.target.value !== '' ? parseInt(e.target.value) : null)}
+                  value={manualPlayer2 !== null ? manualPlayer2 + 1 : ''}
+                  onChange={(e) => setManualPlayer2(e.target.value !== '' ? parseInt(e.target.value) - 1 : null)}
                   disabled={!manualPlayer1}
                   style={{
                     width: '100%',
@@ -298,7 +298,7 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({ tournament, setTourname
                       const record = getPlayerRecord(player.id, tournament.matches);
                       const roundsPlayed = getRoundsPlayed(player, tournament.matches);
                       return (
-                        <option key={player.id} value={player.id}>
+                        <option key={player.id} value={player.id + 1}>
                           {player.name} (R: {roundsPlayed}, W: {record.wins})
                         </option>
                       );
