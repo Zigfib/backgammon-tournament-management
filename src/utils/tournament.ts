@@ -327,6 +327,16 @@ export const generateSwissPairings = (tournament: Tournament): Tournament => {
     return tournament;
   }
   
+  // FIXED: Round calculation based on available players' progress, not global state
+  const targetRoundsPlayed = Math.min(...availablePlayers.map(player => getRoundsPlayed(player, tournament.matches)));
+  const candidateGroup = availablePlayers.filter(player => getRoundsPlayed(player, tournament.matches) === targetRoundsPlayed);
+  const nextRound = targetRoundsPlayed + 1;
+  
+  console.log(`generateSwissPairings: Target rounds played: ${targetRoundsPlayed}, candidate group: ${candidateGroup.length} players`);
+  
+  // Only work with players who have completed the same number of rounds
+  const availableForPairing = candidateGroup;
+  
   // Group players by points (Swiss tournament principle) - only those in candidate group
   const playersByPoints = new Map();
   availableForPairing.forEach(player => {
@@ -345,16 +355,6 @@ export const generateSwissPairings = (tournament: Tournament): Tournament => {
   
   const newMatches = [];
   const usedPlayers = new Set();
-  
-  // FIXED: Round calculation based on available players' progress, not global state
-  const targetRoundsPlayed = Math.min(...availablePlayers.map(player => getRoundsPlayed(player, tournament.matches)));
-  const candidateGroup = availablePlayers.filter(player => getRoundsPlayed(player, tournament.matches) === targetRoundsPlayed);
-  const nextRound = targetRoundsPlayed + 1;
-  
-  console.log(`generateSwissPairings: Target rounds played: ${targetRoundsPlayed}, candidate group: ${candidateGroup.length} players`);
-  
-  // Only work with players who have completed the same number of rounds
-  const availableForPairing = candidateGroup;
   
   let nextMatchId = Math.max(...tournament.matches.map(m => m.id), -1) + 1;
   
@@ -522,21 +522,25 @@ const shuffle = <T>(arr: T[]): T[] => {
 
 export const getProposedSwissPairings = (tournament: Tournament): { player1Id: number, player2Id: number, round: number }[] => {
   const availablePlayers = getAvailablePlayers(tournament);
-  const nextRound = getNextRound(tournament);
   
   if (availablePlayers.length < 2) {
     return [];
   }
   
-  // Check if this is round 1 (all players have 0 points and no completed matches)
-  const isRound1 = tournament.matches.every(m => !m.completed) && availablePlayers.every(p => p.points === 0);
+  // FIXED: Use same cohorting logic as generateSwissPairings
+  const targetRoundsPlayed = Math.min(...availablePlayers.map(player => getRoundsPlayed(player, tournament.matches)));
+  const candidateGroup = availablePlayers.filter(player => getRoundsPlayed(player, tournament.matches) === targetRoundsPlayed);
+  const nextRound = targetRoundsPlayed + 1;
   
   const proposedPairs: { player1Id: number, player2Id: number, round: number }[] = [];
   const usedPlayers = new Set<number>();
   
+  // Check if this is round 1 based on targetRoundsPlayed
+  const isRound1 = targetRoundsPlayed === 0;
+  
   if (isRound1) {
     // Round 1: Completely randomize all available players then pair adjacent
-    const shuffledPlayers = shuffle(availablePlayers);
+    const shuffledPlayers = shuffle(candidateGroup);
     
     for (let i = 0; i < shuffledPlayers.length - 1; i += 2) {
       const player1 = shuffledPlayers[i];
@@ -553,7 +557,7 @@ export const getProposedSwissPairings = (tournament: Tournament): { player1Id: n
   } else {
     // Subsequent rounds: Group by points but randomize within each group
     const playersByPoints = new Map<number, Player[]>();
-    availablePlayers.forEach(player => {
+    candidateGroup.forEach(player => {
       if (!playersByPoints.has(player.points)) {
         playersByPoints.set(player.points, []);
       }
@@ -585,8 +589,8 @@ export const getProposedSwissPairings = (tournament: Tournament): { player1Id: n
     }
   }
   
-  // Cross-group pairing for remaining players (randomized)
-  const remainingPlayers = shuffle(availablePlayers.filter(p => !usedPlayers.has(p.id)));
+  // Cross-group pairing for remaining players (randomized) - only from candidate group
+  const remainingPlayers = shuffle(candidateGroup.filter(p => !usedPlayers.has(p.id)));
   
   for (let i = 0; i < remainingPlayers.length - 1; i++) {
     if (usedPlayers.has(remainingPlayers[i].id)) continue;
