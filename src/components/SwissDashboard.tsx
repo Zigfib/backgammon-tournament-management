@@ -246,9 +246,8 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({ tournament, setTourname
                   Player 1:
                 </label>
                 <select
-                  value={manualPlayer1 || ''}
+                  value={manualPlayer1 !== null ? manualPlayer1 : ''}
                   onChange={(e) => {
-                    console.log('Player 1 selected:', e.target.value, 'parsed:', e.target.value !== '' ? parseInt(e.target.value) : null);
                     setManualPlayer1(e.target.value !== '' ? parseInt(e.target.value) : null);
                     setManualPlayer2(null); // Reset player 2 when player 1 changes
                   }}
@@ -279,11 +278,8 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({ tournament, setTourname
                   Player 2:
                 </label>
                 <select
-                  value={manualPlayer2 || ''}
-                  onChange={(e) => {
-                    console.log('Player 2 selected:', e.target.value, 'parsed:', e.target.value !== '' ? parseInt(e.target.value) : null);
-                    setManualPlayer2(e.target.value !== '' ? parseInt(e.target.value) : null);
-                  }}
+                  value={manualPlayer2 !== null ? manualPlayer2 : ''}
+                  onChange={(e) => setManualPlayer2(e.target.value !== '' ? parseInt(e.target.value) : null)}
                   disabled={!manualPlayer1}
                   style={{
                     width: '100%',
