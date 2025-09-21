@@ -8,6 +8,7 @@ import {
   getProposedSwissPairings,
   updateMatchResult,
 } from "../utils/tournament";
+import { calculateStandardRanking } from "../utils/ranking";
 
 interface SwissDashboardProps {
   tournament: Tournament;
@@ -695,115 +696,161 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({
                     border: "1px solid #dee2e6",
                   }}
                 >
+                  TB1
+                </th>
+                <th
+                  style={{
+                    padding: "12px",
+                    textAlign: "center",
+                    border: "1px solid #dee2e6",
+                  }}
+                >
+                  TB2
+                </th>
+                <th
+                  style={{
+                    padding: "12px",
+                    textAlign: "center",
+                    border: "1px solid #dee2e6",
+                  }}
+                >
                   ELO
                 </th>
               </tr>
             </thead>
             <tbody>
-              {[...tournament.players]
-                .sort((a, b) => b.points - a.points || b.goalDiff - a.goalDiff)
-                .map((player) => {
-                  const record = getPlayerRecord(player.id, tournament.matches);
-                  const roundsPlayed = getRoundsPlayed(
-                    player,
-                    tournament.matches
-                  );
-                  const status = getPlayerStatus(player);
+              {calculateStandardRanking(
+                tournament.players,
+                tournament.results
+              ).map((player) => {
+                const record = getPlayerRecord(player.id, tournament.matches);
+                const roundsPlayed = getRoundsPlayed(
+                  player,
+                  tournament.matches
+                );
+                const status = getPlayerStatus(player);
 
-                  return (
-                    <tr
-                      key={player.id}
+                return (
+                  <tr
+                    key={player.id}
+                    style={{
+                      backgroundColor:
+                        status === "Playing"
+                          ? "#fff3cd"
+                          : status === "Finished"
+                          ? "#e7f3e7"
+                          : "white",
+                    }}
+                  >
+                    <td
                       style={{
-                        backgroundColor:
-                          status === "Playing"
-                            ? "#fff3cd"
-                            : status === "Finished"
-                            ? "#e7f3e7"
-                            : "white",
+                        padding: "10px",
+                        border: "1px solid #dee2e6",
+                        fontWeight: "bold",
                       }}
                     >
-                      <td
-                        style={{
-                          padding: "10px",
-                          border: "1px solid #dee2e6",
-                          fontWeight: "bold",
-                        }}
+                      {player.name}
+                    </td>
+                    <td
+                      style={{
+                        padding: "10px",
+                        border: "1px solid #dee2e6",
+                        textAlign: "center",
+                      }}
+                    >
+                      {status}
+                    </td>
+                    <td
+                      style={{
+                        padding: "10px",
+                        border: "1px solid #dee2e6",
+                        textAlign: "center",
+                      }}
+                    >
+                      {roundsPlayed}/{tournament.numRounds}
+                    </td>
+                    <td
+                      style={{
+                        padding: "10px",
+                        border: "1px solid #dee2e6",
+                        textAlign: "center",
+                      }}
+                    >
+                      {record.wins}
+                    </td>
+                    <td
+                      style={{
+                        padding: "10px",
+                        border: "1px solid #dee2e6",
+                        textAlign: "center",
+                      }}
+                    >
+                      {record.losses}
+                    </td>
+                    <td
+                      style={{
+                        padding: "10px",
+                        border: "1px solid #dee2e6",
+                        textAlign: "center",
+                        fontWeight: "bold",
+                      }}
+                    >
+                      {player.points}
+                    </td>
+                    <td
+                      style={{
+                        padding: "10px",
+                        border: "1px solid #dee2e6",
+                        textAlign: "center",
+                      }}
+                    >
+                      <span
+                        style={{ fontSize: "12px", color: "#6c757d" }}
+                        title="Head-to-Head: Wins vs players with same points"
                       >
-                        {player.name}
-                      </td>
-                      <td
-                        style={{
-                          padding: "10px",
-                          border: "1px solid #dee2e6",
-                          textAlign: "center",
-                        }}
+                        {player.tiebreakers.winsAgainstSamePoints}
+                      </span>
+                    </td>
+                    <td
+                      style={{
+                        padding: "10px",
+                        border: "1px solid #dee2e6",
+                        textAlign: "center",
+                      }}
+                    >
+                      <span
+                        style={{ fontSize: "12px", color: "#6c757d" }}
+                        title="Buchholz: Sum of opponents' points"
                       >
-                        {status}
-                      </td>
-                      <td
-                        style={{
-                          padding: "10px",
-                          border: "1px solid #dee2e6",
-                          textAlign: "center",
-                        }}
-                      >
-                        {roundsPlayed}/{tournament.numRounds}
-                      </td>
-                      <td
-                        style={{
-                          padding: "10px",
-                          border: "1px solid #dee2e6",
-                          textAlign: "center",
-                        }}
-                      >
-                        {record.wins}
-                      </td>
-                      <td
-                        style={{
-                          padding: "10px",
-                          border: "1px solid #dee2e6",
-                          textAlign: "center",
-                        }}
-                      >
-                        {record.losses}
-                      </td>
-                      <td
-                        style={{
-                          padding: "10px",
-                          border: "1px solid #dee2e6",
-                          textAlign: "center",
-                          fontWeight: "bold",
-                        }}
-                      >
-                        {player.points}
-                      </td>
-                      <td
-                        style={{
-                          padding: "10px",
-                          border: "1px solid #dee2e6",
-                          textAlign: "center",
-                        }}
-                      >
-                        {player.currentElo}
-                        {player.currentElo !== player.startingElo && (
-                          <span
-                            style={{
-                              fontSize: "12px",
-                              color:
-                                player.currentElo > player.startingElo
-                                  ? "#28a745"
-                                  : "#dc3545",
-                            }}
-                          >
-                            (
-                            {player.currentElo >= player.startingElo ? "+" : ""}
-                            {player.currentElo - player.startingElo})
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
+                        {player.tiebreakers.buchholzScore}
+                      </span>
+                    </td>
+                    <td
+                      style={{
+                        padding: "10px",
+                        border: "1px solid #dee2e6",
+                        textAlign: "center",
+                      }}
+                    >
+                      {player.currentElo}
+                      {player.currentElo !== player.startingElo && (
+                        <span
+                          style={{
+                            fontSize: "12px",
+                            color:
+                              player.currentElo > player.startingElo
+                                ? "#28a745"
+                                : "#dc3545",
+                          }}
+                        >
+                          ({player.currentElo >= player.startingElo ? "+" : ""}
+                          {player.currentElo - player.startingElo})
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
