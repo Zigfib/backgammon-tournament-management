@@ -339,10 +339,12 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({
                   Player 1:
                 </label>
                 <select
-                  value={manualPlayer1 !== null ? manualPlayer1 : ""}
+                  value={manualPlayer1 !== null ? manualPlayer1 + 1 : ""}
                   onChange={(e) => {
                     setManualPlayer1(
-                      e.target.value !== "" ? parseInt(e.target.value) : null
+                      e.target.value !== ""
+                        ? parseInt(e.target.value) - 1
+                        : null
                     );
                     setManualPlayer2(null); // Reset player 2 when player 1 changes
                   }}
@@ -365,7 +367,7 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({
                       tournament.matches
                     );
                     return (
-                      <option key={player.id} value={player.id}>
+                      <option key={player.id} value={player.id + 1}>
                         {player.name} (R: {roundsPlayed}, W: {record.wins})
                       </option>
                     );
@@ -386,10 +388,12 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({
                   Player 2:
                 </label>
                 <select
-                  value={manualPlayer2 !== null ? manualPlayer2 : ""}
+                  value={manualPlayer2 !== null ? manualPlayer2 + 1 : ""}
                   onChange={(e) =>
                     setManualPlayer2(
-                      e.target.value !== "" ? parseInt(e.target.value) : null
+                      e.target.value !== ""
+                        ? parseInt(e.target.value) - 1
+                        : null
                     )
                   }
                   disabled={!manualPlayer1}
@@ -417,7 +421,7 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({
                           tournament.matches
                         );
                         return (
-                          <option key={player.id} value={player.id}>
+                          <option key={player.id} value={player.id + 1}>
                             {player.name} (R: {roundsPlayed}, W: {record.wins})
                           </option>
                         );
