@@ -1,7 +1,6 @@
 import React from "react";
 import { Tournament, Player } from "../types";
 import {
-  generateSwissPairings,
   getRoundsPlayed,
   getPlayerRecord,
   getNextRound,
