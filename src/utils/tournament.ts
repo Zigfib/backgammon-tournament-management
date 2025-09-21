@@ -508,11 +508,10 @@ export const getProposedSwissPairings = (tournament: Tournament): { player1Id: n
   // Group players by points (Swiss tournament principle)
   const playersByPoints = new Map<number, Player[]>();
   availablePlayers.forEach(player => {
-    const points = player.points;
-    if (!playersByPoints.has(points)) {
-      playersByPoints.set(points, []);
+    if (!playersByPoints.has(player.points)) {
+      playersByPoints.set(player.points, []);
     }
-    playersByPoints.get(points)!.push(player);
+    playersByPoints.get(player.points)!.push(player);
   });
   
   // Sort point groups in descending order
@@ -522,7 +521,7 @@ export const getProposedSwissPairings = (tournament: Tournament): { player1Id: n
   const usedPlayers = new Set<number>();
   
   // Create pairings within same score groups first
-  for (const [points, players] of sortedPointGroups) {
+  for (const [, players] of sortedPointGroups) {
     const availableInGroup = players.filter(p => !usedPlayers.has(p.id));
     
     for (let i = 0; i < availableInGroup.length - 1; i += 2) {
