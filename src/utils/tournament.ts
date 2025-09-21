@@ -264,9 +264,9 @@ export const generateSwissPairings = (tournament: Tournament): Tournament => {
     return tournament;
   }
   
-  // Group players by points (Swiss tournament principle)
+  // Group players by points (Swiss tournament principle) - only those in candidate group
   const playersByPoints = new Map();
-  availablePlayers.forEach(player => {
+  availableForPairing.forEach(player => {
     const points = player.points;
     if (!playersByPoints.has(points)) {
       playersByPoints.set(points, []);
@@ -283,10 +283,15 @@ export const generateSwissPairings = (tournament: Tournament): Tournament => {
   const newMatches = [];
   const usedPlayers = new Set();
   
-  // FIXED: Proper round calculation for Swiss tournaments
-  const maxRound = tournament.matches.length ? Math.max(...tournament.matches.map(m => m.round)) : 0;
-  const hasOpenInMaxRound = tournament.matches.some(m => m.round === maxRound && !m.completed);
-  const nextRound = hasOpenInMaxRound ? maxRound : maxRound + 1;
+  // FIXED: Round calculation based on available players' progress, not global state
+  const targetRoundsPlayed = Math.min(...availablePlayers.map(player => getRoundsPlayed(player, tournament.matches)));
+  const candidateGroup = availablePlayers.filter(player => getRoundsPlayed(player, tournament.matches) === targetRoundsPlayed);
+  const nextRound = targetRoundsPlayed + 1;
+  
+  console.log(`generateSwissPairings: Target rounds played: ${targetRoundsPlayed}, candidate group: ${candidateGroup.length} players`);
+  
+  // Only work with players who have completed the same number of rounds
+  const availableForPairing = candidateGroup;
   
   let nextMatchId = Math.max(...tournament.matches.map(m => m.id), -1) + 1;
   
@@ -324,7 +329,7 @@ export const generateSwissPairings = (tournament: Tournament): Tournament => {
   }
   
   // Handle leftover players by pairing across score groups (respecting tolerance)
-  const remainingPlayers = availablePlayers.filter(p => !usedPlayers.has(p.id));
+  const remainingPlayers = availableForPairing.filter(p => !usedPlayers.has(p.id));
   console.log(`generateSwissPairings: ${remainingPlayers.length} players remaining for cross-group pairing (tolerance: ${tournament.swissTolerance})`);
   
   // Sort remaining players by points for tolerance-based pairing
@@ -371,7 +376,7 @@ export const generateSwissPairings = (tournament: Tournament): Tournament => {
   
   console.log(`generateSwissPairings: Generated ${newMatches.length} new matches for round ${nextRound}`);
   
-  const successRate = availablePlayers.length >= 2 ? (newMatches.length * 2 / availablePlayers.length * 100) : 0;
+  const successRate = availableForPairing.length >= 2 ? (newMatches.length * 2 / availableForPairing.length * 100) : 0;
   console.log(`generateSwissPairings: Pairing success rate: ${successRate.toFixed(1)}%`);
   
   return {
@@ -407,9 +412,17 @@ export const getPlayerRecord = (playerId: number, matches: Match[]): { wins: num
 };
 
 export const getNextRound = (tournament: Tournament): number => {
-  const maxRound = tournament.matches.length ? Math.max(...tournament.matches.map(m => m.round)) : 0;
-  const hasOpenInMaxRound = tournament.matches.some(m => m.round === maxRound && !m.completed);
-  return hasOpenInMaxRound ? maxRound : maxRound + 1;
+  const availablePlayers = getAvailablePlayers(tournament);
+  
+  if (availablePlayers.length === 0) {
+    // No available players, return current max round for display
+    const maxRound = tournament.matches.length ? Math.max(...tournament.matches.map(m => m.round)) : 0;
+    return Math.max(1, maxRound);
+  }
+  
+  // Calculate next round based on minimum rounds played by available players
+  const minRoundsPlayed = Math.min(...availablePlayers.map(player => getRoundsPlayed(player, tournament.matches)));
+  return minRoundsPlayed + 1;
 };
 
 export const getAvailablePlayers = (tournament: Tournament): Player[] => {
