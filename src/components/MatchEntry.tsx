@@ -17,6 +17,7 @@ interface PendingScores {
 
 const MatchEntry: React.FC<MatchEntryProps> = ({ tournament, setTournament }) => {
   const [pendingScores, setPendingScores] = useState<PendingScores>({});
+  const [editingMatch, setEditingMatch] = useState<number | null>(null);
 
   // Swiss Tournament Display Logic (must be before any early returns)
   useEffect(() => {
@@ -84,11 +85,37 @@ const MatchEntry: React.FC<MatchEntryProps> = ({ tournament, setTournament }) =>
     
     setTournament(prev => updateMatchResult(prev, matchId, scores.player1Score, scores.player2Score));
     
-    // Clear pending scores for this match
+    // Clear pending scores and close editing
     setPendingScores(prev => {
       const updated = { ...prev };
       delete updated[matchId];
       return updated;
+    });
+    setEditingMatch(null);
+  };
+
+  const handleMatchClick = (matchId: number) => {
+    const match = tournament.matches.find(m => m.id === matchId);
+    if (!match || match.completed) return;
+    
+    setEditingMatch(matchId);
+    if (!pendingScores[matchId]) {
+      setPendingScores(prev => ({
+        ...prev,
+        [matchId]: { 
+          player1Score: match.player1Score?.toString() || '', 
+          player2Score: match.player2Score?.toString() || '' 
+        }
+      }));
+    }
+  };
+
+  const handleCancelScore = () => {
+    setEditingMatch(null);
+    setPendingScores(prev => {
+      const newScores = { ...prev };
+      if (editingMatch) delete newScores[editingMatch];
+      return newScores;
     });
   };
 
@@ -169,61 +196,151 @@ const MatchEntry: React.FC<MatchEntryProps> = ({ tournament, setTournament }) =>
           
           const isMatchSubmitted = match.completed;
           const canSubmit = isValidScore(match.id);
+          const isEditing = editingMatch === match.id;
           
           return (
-            <div key={match.id} className="match-input" style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-              <div>
-                <label>{p1.name} ({p1.currentElo})</label>
-                <small style={{ color: '#666', fontSize: '12px' }}>Expected: {expectedP1}%</small>
-                <input 
-                  type="number" 
-                  value={currentScores.player1Score} 
-                  min="0" 
-                  max={tournament.maxPoints}
-                  disabled={isMatchSubmitted}
-                  onChange={(e) => handleScoreChange(match.id, 'player1', e.target.value)}
-                  onFocus={() => handleAutoComplete(match.id, 'player1')}
-                />
-              </div>
-              <div className="vs-text">vs<br />Round {match.round}</div>
-              <div>
-                <label>{p2.name} ({p2.currentElo})</label>
-                <small style={{ color: '#666', fontSize: '12px' }}>Expected: {expectedP2}%</small>
-                <input 
-                  type="number" 
-                  value={currentScores.player2Score} 
-                  min="0" 
-                  max={tournament.maxPoints}
-                  disabled={isMatchSubmitted}
-                  onChange={(e) => handleScoreChange(match.id, 'player2', e.target.value)}
-                  onFocus={() => handleAutoComplete(match.id, 'player2')}
-                />
-              </div>
-              <div>
-                {isMatchSubmitted ? (
+            <div key={match.id} style={{ marginBottom: '15px', backgroundColor: 'white', border: '1px solid #dee2e6', borderRadius: '8px', overflow: 'hidden' }}>
+              {!isEditing && !isMatchSubmitted ? (
+                <div 
+                  onClick={() => handleMatchClick(match.id)}
+                  style={{ 
+                    padding: '15px',
+                    cursor: 'pointer',
+                    transition: 'background-color 0.2s',
+                    borderLeft: '4px solid #007bff'
+                  }}
+                  onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'}
+                  onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'white'}
+                >
+                  <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>
+                    {p1.name} ({p1.points} pts) vs {p2.name} ({p2.points} pts)
+                  </div>
+                  <div style={{ fontSize: '13px', color: '#6c757d' }}>
+                    Round {match.round} • ELO: {p1.currentElo} vs {p2.currentElo} • Expected: {expectedP1}% vs {expectedP2}% • Click to enter scores
+                  </div>
+                </div>
+              ) : isMatchSubmitted ? (
+                <div style={{ padding: '15px', backgroundColor: '#d4edda', borderLeft: '4px solid #28a745' }}>
+                  <div style={{ fontWeight: 'bold', marginBottom: '5px', color: '#155724' }}>
+                    {p1.name} {match.player1Score} - {match.player2Score} {p2.name} ✓
+                  </div>
+                  <div style={{ fontSize: '13px', color: '#155724', marginBottom: '10px' }}>
+                    Round {match.round} • Winner: {(match.player1Score || 0) > (match.player2Score || 0) ? p1.name : p2.name}
+                  </div>
                   <button 
-                    className="btn btn-success" 
                     onClick={() => editScore(match.id)}
-                    style={{ padding: '8px 16px', fontSize: '14px' }}
+                    style={{ 
+                      padding: '6px 12px', 
+                      fontSize: '12px', 
+                      backgroundColor: '#28a745', 
+                      color: 'white', 
+                      border: 'none', 
+                      borderRadius: '4px',
+                      cursor: 'pointer'
+                    }}
                   >
                     Edit Score
                   </button>
-                ) : (
-                  <button 
-                    className="btn" 
-                    onClick={() => submitScore(match.id)}
-                    disabled={!canSubmit}
-                    style={{ 
-                      padding: '8px 16px', 
-                      fontSize: '14px',
-                      opacity: canSubmit ? 1 : 0.5,
-                      cursor: canSubmit ? 'pointer' : 'not-allowed'
-                    }}
-                  >
-                    Submit Score
-                  </button>
-                )}
-              </div>
+                </div>
+              ) : (
+                <div style={{ padding: '15px' }}>
+                  <div style={{ fontWeight: 'bold', marginBottom: '15px' }}>
+                    Enter Scores - Round {match.round}
+                  </div>
+                  
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: '20px', alignItems: 'center', marginBottom: '15px' }}>
+                    {/* Player 1 Input */}
+                    <div>
+                      <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>
+                        {p1.name}
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#666', marginBottom: '5px' }}>
+                        ELO: {p1.currentElo} • Expected: {expectedP1}%
+                      </div>
+                      <input 
+                        type="number" 
+                        value={currentScores.player1Score} 
+                        min="0" 
+                        max={tournament.maxPoints}
+                        onChange={(e) => handleScoreChange(match.id, 'player1', e.target.value)}
+                        onBlur={() => handleAutoComplete(match.id, 'player1')}
+                        placeholder="0"
+                        style={{
+                          width: '80px',
+                          padding: '8px',
+                          border: '2px solid #dee2e6',
+                          borderRadius: '4px',
+                          fontSize: '16px',
+                          textAlign: 'center'
+                        }}
+                      />
+                    </div>
+                    
+                    {/* VS divider */}
+                    <div style={{ fontWeight: 'bold', color: '#6c757d' }}>vs</div>
+                    
+                    {/* Player 2 Input */}
+                    <div>
+                      <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>
+                        {p2.name}
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#666', marginBottom: '5px' }}>
+                        ELO: {p2.currentElo} • Expected: {expectedP2}%
+                      </div>
+                      <input 
+                        type="number" 
+                        value={currentScores.player2Score} 
+                        min="0" 
+                        max={tournament.maxPoints}
+                        onChange={(e) => handleScoreChange(match.id, 'player2', e.target.value)}
+                        onBlur={() => handleAutoComplete(match.id, 'player2')}
+                        placeholder="0"
+                        style={{
+                          width: '80px',
+                          padding: '8px',
+                          border: '2px solid #dee2e6',
+                          borderRadius: '4px',
+                          fontSize: '16px',
+                          textAlign: 'center'
+                        }}
+                      />
+                    </div>
+                  </div>
+                  
+                  {/* Action buttons */}
+                  <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                    <button
+                      onClick={handleCancelScore}
+                      style={{
+                        padding: '8px 16px',
+                        backgroundColor: '#6c757d',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        fontSize: '14px'
+                      }}
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      onClick={() => submitScore(match.id)}
+                      disabled={!canSubmit}
+                      style={{ 
+                        padding: '8px 16px',
+                        backgroundColor: canSubmit ? '#28a745' : '#dee2e6',
+                        color: canSubmit ? 'white' : '#6c757d',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: canSubmit ? 'pointer' : 'not-allowed',
+                        fontSize: '14px'
+                      }}
+                    >
+                      Submit Score
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           );
         })}

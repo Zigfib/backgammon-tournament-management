@@ -445,40 +445,27 @@ const shuffle = <T>(arr: T[]): T[] => {
 };
 
 export const getProposedSwissPairings = (tournament: Tournament): { player1Id: number, player2Id: number, round: number }[] => {
-  console.log('getProposedSwissPairings called!');
   const availablePlayers = getAvailablePlayers(tournament);
   const nextRound = getNextRound(tournament);
   
-  console.log('Available players for pairing:', availablePlayers.map(p => p.name));
-  console.log('Tournament matches:', tournament.matches.length);
-  console.log('All players points:', tournament.players.map(p => `${p.name}: ${p.points}`));
-  
   if (availablePlayers.length < 2) {
-    console.log('Not enough players for pairing');
     return [];
   }
   
   // Check if this is round 1 (all players have 0 points and no completed matches)
   const isRound1 = tournament.matches.every(m => !m.completed) && availablePlayers.every(p => p.points === 0);
-  console.log('Is Round 1?', isRound1);
-  console.log('Match completion status:', tournament.matches.map(m => m.completed));
-  console.log('Player points:', availablePlayers.map(p => p.points));
   
   const proposedPairs: { player1Id: number, player2Id: number, round: number }[] = [];
   const usedPlayers = new Set<number>();
   
   if (isRound1) {
     // Round 1: Completely randomize all available players then pair adjacent
-    console.log('Round 1 detected - using fully random pairings');
-    console.log('Before shuffle:', availablePlayers.map(p => p.name));
     const shuffledPlayers = shuffle(availablePlayers);
-    console.log('After shuffle:', shuffledPlayers.map(p => p.name));
     
     for (let i = 0; i < shuffledPlayers.length - 1; i += 2) {
       const player1 = shuffledPlayers[i];
       const player2 = shuffledPlayers[i + 1];
       
-      console.log(`Creating pairing: ${player1.name} vs ${player2.name}`);
       proposedPairs.push({
         player1Id: player1.id,
         player2Id: player2.id,
