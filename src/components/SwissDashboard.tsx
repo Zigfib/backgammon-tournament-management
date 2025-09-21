@@ -493,80 +493,129 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({
         </div>
       )}
 
-      {/* 3. Proposed Pairings Section - Only show if there are pairings */}
-      {proposedPairings.length > 0 && (
+      {/* 3. Proposed Pairings Section - Show if there are pairings OR waiting message */}
+      {(proposedPairings.length > 0 ||
+        (availablePlayers.length > 0 && activeMatches.length > 0)) && (
         <div style={{ marginBottom: "25px" }}>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              marginBottom: "15px",
-            }}
-          >
-            <h3 style={{ margin: 0, color: "#28a745" }}>Proposed Pairings</h3>
-            <button
-              onClick={handleApplyPairings}
-              style={{
-                padding: "8px 16px",
-                backgroundColor: "#28a745",
-                color: "white",
-                border: "none",
-                borderRadius: "5px",
-                fontSize: "14px",
-                cursor: "pointer",
-              }}
-            >
-              Apply Pairings
-            </button>
-          </div>
-          <div
-            style={{
-              backgroundColor: "#f5fff5",
-              border: "1px solid #c3e6cb",
-              borderRadius: "8px",
-              padding: "15px",
-            }}
-          >
-            {proposedPairings.map((pairing, index) => {
-              const player1 = tournament.players[pairing.player1Id];
-              const player2 = tournament.players[pairing.player2Id];
-              return (
-                <div
-                  key={index}
-                  style={{
-                    padding: "10px",
-                    marginBottom: "8px",
-                    backgroundColor: "white",
-                    borderRadius: "5px",
-                    border: "1px solid #e9ecef",
-                  }}
-                >
-                  <div style={{ fontWeight: "bold", marginBottom: "4px" }}>
-                    {player1.name} ({player1.points} pts) vs {player2.name} (
-                    {player2.points} pts)
-                  </div>
-                  <div style={{ fontSize: "13px", color: "#6c757d" }}>
-                    Round {pairing.round} • ELO: {player1.currentElo} vs{" "}
-                    {player2.currentElo}
-                  </div>
-                </div>
-              );
-            })}
-            {availablePlayers.length > proposedPairings.length * 2 && (
+          {proposedPairings.length > 0 ? (
+            <>
               <div
                 style={{
-                  fontSize: "13px",
-                  color: "#856404",
-                  fontStyle: "italic",
-                  marginTop: "10px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  marginBottom: "15px",
                 }}
               >
-                {availablePlayers.length - proposedPairings.length * 2}{" "}
-                player(s) will remain unpaired
+                <h3 style={{ margin: 0, color: "#28a745" }}>
+                  Proposed Pairings
+                </h3>
+                <button
+                  onClick={handleApplyPairings}
+                  style={{
+                    padding: "8px 16px",
+                    backgroundColor: "#28a745",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "5px",
+                    fontSize: "14px",
+                    cursor: "pointer",
+                  }}
+                >
+                  Apply Pairings
+                </button>
               </div>
-            )}
-          </div>
+              <div
+                style={{
+                  backgroundColor: "#f5fff5",
+                  border: "1px solid #c3e6cb",
+                  borderRadius: "8px",
+                  padding: "15px",
+                }}
+              >
+                {proposedPairings.map((pairing, index) => {
+                  const player1 = tournament.players[pairing.player1Id];
+                  const player2 = tournament.players[pairing.player2Id];
+                  return (
+                    <div
+                      key={index}
+                      style={{
+                        padding: "10px",
+                        marginBottom: "8px",
+                        backgroundColor: "white",
+                        borderRadius: "5px",
+                        border: "1px solid #e9ecef",
+                      }}
+                    >
+                      <div style={{ fontWeight: "bold", marginBottom: "4px" }}>
+                        {player1.name} ({player1.points} pts) vs {player2.name}{" "}
+                        ({player2.points} pts)
+                      </div>
+                      <div style={{ fontSize: "13px", color: "#6c757d" }}>
+                        Round {pairing.round} • ELO: {player1.currentElo} vs{" "}
+                        {player2.currentElo}
+                      </div>
+                    </div>
+                  );
+                })}
+                <div
+                  style={{
+                    fontSize: "13px",
+                    color: "#28a745",
+                    fontStyle: "italic",
+                    marginTop: "10px",
+                  }}
+                >
+                  ✓ All proposed pairings are guaranteed to allow valid pairings
+                  for remaining players
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <h3 style={{ margin: "0 0 15px 0", color: "#ffc107" }}>
+                Waiting for Safe Pairings
+              </h3>
+              <div
+                style={{
+                  backgroundColor: "#fff3cd",
+                  border: "1px solid #ffeaa7",
+                  borderRadius: "8px",
+                  padding: "15px",
+                }}
+              >
+                <div
+                  style={{
+                    fontWeight: "bold",
+                    marginBottom: "8px",
+                    color: "#856404",
+                  }}
+                >
+                  ⏳ No safe pairings available right now
+                </div>
+                <div
+                  style={{
+                    fontSize: "14px",
+                    color: "#856404",
+                    marginBottom: "8px",
+                  }}
+                >
+                  The system is waiting for active matches to complete before
+                  proposing new pairings. This ensures all players can be paired
+                  fairly regardless of match outcomes.
+                </div>
+                <div
+                  style={{
+                    fontSize: "13px",
+                    color: "#856404",
+                    fontStyle: "italic",
+                  }}
+                >
+                  Safe pairings will appear automatically when matches finish.
+                </div>
+              </div>
+            </>
+          )}
         </div>
       )}
 
