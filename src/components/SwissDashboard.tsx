@@ -94,6 +94,7 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({
     const otherScore =
       player === "player1" ? scores.player2Score : scores.player1Score;
 
+    // If the OTHER player has a score less than max and the CURRENT field is empty, auto-fill current field with max
     if (
       otherScore &&
       parseInt(otherScore) < tournament.maxPoints &&
@@ -116,7 +117,10 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({
     const p1Score = parseInt(scores.player1Score);
     const p2Score = parseInt(scores.player2Score);
 
+    // Check if scores are valid numbers
     if (isNaN(p1Score) || isNaN(p2Score)) return false;
+
+    // Check if scores are within valid range
     if (
       p1Score < 0 ||
       p2Score < 0 ||
@@ -124,8 +128,11 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({
       p2Score > tournament.maxPoints
     )
       return false;
+
+    // Prevent 0-0 scores
     if (p1Score === 0 && p2Score === 0) return false;
 
+    // One score must be the maximum, the other must be lower
     return (
       (p1Score === tournament.maxPoints && p2Score < tournament.maxPoints) ||
       (p2Score === tournament.maxPoints && p1Score < tournament.maxPoints)
@@ -314,6 +321,9 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({
                                 e.target.value
                               )
                             }
+                            onFocus={() =>
+                              handleAutoComplete(match.id, "player1")
+                            }
                             onBlur={() =>
                               handleAutoComplete(match.id, "player1")
                             }
@@ -352,6 +362,9 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({
                                 "player2",
                                 e.target.value
                               )
+                            }
+                            onFocus={() =>
+                              handleAutoComplete(match.id, "player2")
                             }
                             onBlur={() =>
                               handleAutoComplete(match.id, "player2")
