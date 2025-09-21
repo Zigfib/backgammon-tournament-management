@@ -341,6 +341,12 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({
                 <select
                   value={manualPlayer1 || ""}
                   onChange={(e) => {
+                    console.log(
+                      "Player 1 selected:",
+                      e.target.value,
+                      "parsed:",
+                      e.target.value !== "" ? parseInt(e.target.value) : null
+                    );
                     setManualPlayer1(
                       e.target.value !== "" ? parseInt(e.target.value) : null
                     );
@@ -387,11 +393,17 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({
                 </label>
                 <select
                   value={manualPlayer2 || ""}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    console.log(
+                      "Player 2 selected:",
+                      e.target.value,
+                      "parsed:",
+                      e.target.value !== "" ? parseInt(e.target.value) : null
+                    );
                     setManualPlayer2(
                       e.target.value !== "" ? parseInt(e.target.value) : null
-                    )
-                  }
+                    );
+                  }}
                   disabled={!manualPlayer1}
                   style={{
                     width: "100%",
