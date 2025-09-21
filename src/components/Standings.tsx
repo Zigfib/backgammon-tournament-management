@@ -8,9 +8,53 @@ interface StandingsProps {
 }
 
 const Standings: React.FC<StandingsProps> = ({ tournament }) => {
+  // Build results structure from completed matches for tiebreaker calculations
+  const resultsFromMatches: Record<number, Record<number, any[]>> = {};
+  
+  tournament.matches.forEach(match => {
+    if (match.completed && match.player1Score !== null && match.player2Score !== null) {
+      // Initialize player results if not exists
+      if (!resultsFromMatches[match.player1]) {
+        resultsFromMatches[match.player1] = {};
+      }
+      if (!resultsFromMatches[match.player2]) {
+        resultsFromMatches[match.player2] = {};
+      }
+      
+      // Create result data
+      const isPlayer1Winner = match.player1Score > match.player2Score;
+      const resultData1 = {
+        round: match.round,
+        score1: match.player1Score,
+        score2: match.player2Score,
+        points1: isPlayer1Winner ? 3 : 1,
+        points2: isPlayer1Winner ? 1 : 3
+      };
+      
+      const resultData2 = {
+        round: match.round,
+        score1: match.player2Score,
+        score2: match.player1Score,
+        points1: isPlayer1Winner ? 1 : 3,
+        points2: isPlayer1Winner ? 3 : 1
+      };
+      
+      // Store results for both players
+      if (!resultsFromMatches[match.player1][match.player2]) {
+        resultsFromMatches[match.player1][match.player2] = [];
+      }
+      if (!resultsFromMatches[match.player2][match.player1]) {
+        resultsFromMatches[match.player2][match.player1] = [];
+      }
+      
+      resultsFromMatches[match.player1][match.player2].push(resultData1);
+      resultsFromMatches[match.player2][match.player1].push(resultData2);
+    }
+  });
+
   const sortedPlayers = tournament.rankingSystem === 'hybrid' 
-    ? calculateHybridRanking(tournament.players)
-    : calculateStandardRanking(tournament.players);
+    ? calculateHybridRanking(tournament.players, resultsFromMatches)
+    : calculateStandardRanking(tournament.players, resultsFromMatches);
 
   const getRankingExplanation = () => {
     if (tournament.rankingSystem === 'hybrid') {
