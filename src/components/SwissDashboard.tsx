@@ -1,6 +1,6 @@
 import React from 'react';
 import { Tournament, Player } from '../types';
-import { generateSwissPairings, getRoundsPlayed, getPlayerRecord, getNextRound, getAvailablePlayers, getProposedSwissPairings } from '../utils/tournament';
+import { getRoundsPlayed, getPlayerRecord, getNextRound, getAvailablePlayers, getProposedSwissPairings } from '../utils/tournament';
 
 interface SwissDashboardProps {
   tournament: Tournament;
