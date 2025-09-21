@@ -434,6 +434,16 @@ export const havePlayedBefore = (playerId1: number, playerId2: number, matches: 
   );
 };
 
+// Fisher-Yates shuffle function for randomizing pairings
+const shuffle = <T>(arr: T[]): T[] => {
+  const shuffled = [...arr];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+};
+
 export const getProposedSwissPairings = (tournament: Tournament): { player1Id: number, player2Id: number, round: number }[] => {
   const availablePlayers = getAvailablePlayers(tournament);
   const nextRound = getNextRound(tournament);
@@ -442,64 +452,91 @@ export const getProposedSwissPairings = (tournament: Tournament): { player1Id: n
     return [];
   }
   
-  // Group players by points (Swiss tournament principle)
-  const playersByPoints = new Map<number, Player[]>();
-  availablePlayers.forEach(player => {
-    if (!playersByPoints.has(player.points)) {
-      playersByPoints.set(player.points, []);
-    }
-    playersByPoints.get(player.points)!.push(player);
-  });
-  
-  // Sort point groups in descending order
-  const sortedPointGroups = Array.from(playersByPoints.entries()).sort((a, b) => b[0] - a[0]);
+  // Check if this is round 1 (all players have 0 points and no completed matches)
+  const isRound1 = tournament.matches.every(m => !m.completed) && availablePlayers.every(p => p.points === 0);
   
   const proposedPairs: { player1Id: number, player2Id: number, round: number }[] = [];
   const usedPlayers = new Set<number>();
   
-  // Create pairings within same score groups first
-  for (const [, players] of sortedPointGroups) {
-    const availableInGroup = players.filter(p => !usedPlayers.has(p.id));
+  if (isRound1) {
+    // Round 1: Completely randomize all available players then pair adjacent
+    console.log('Round 1 detected - using fully random pairings');
+    const shuffledPlayers = shuffle(availablePlayers);
     
-    for (let i = 0; i < availableInGroup.length - 1; i += 2) {
-      const player1 = availableInGroup[i];
-      const player2 = availableInGroup[i + 1];
+    for (let i = 0; i < shuffledPlayers.length - 1; i += 2) {
+      const player1 = shuffledPlayers[i];
+      const player2 = shuffledPlayers[i + 1];
       
-      if (!havePlayedBefore(player1.id, player2.id, tournament.matches)) {
-        proposedPairs.push({
-          player1Id: player1.id,
-          player2Id: player2.id,
-          round: nextRound
-        });
-        usedPlayers.add(player1.id);
-        usedPlayers.add(player2.id);
+      proposedPairs.push({
+        player1Id: player1.id,
+        player2Id: player2.id,
+        round: nextRound
+      });
+      usedPlayers.add(player1.id);
+      usedPlayers.add(player2.id);
+    }
+  } else {
+    // Subsequent rounds: Group by points but randomize within each group
+    const playersByPoints = new Map<number, Player[]>();
+    availablePlayers.forEach(player => {
+      if (!playersByPoints.has(player.points)) {
+        playersByPoints.set(player.points, []);
+      }
+      playersByPoints.get(player.points)!.push(player);
+    });
+    
+    // Sort point groups in descending order
+    const sortedPointGroups = Array.from(playersByPoints.entries()).sort((a, b) => b[0] - a[0]);
+    
+    // Create pairings within same score groups first (randomized within group)
+    for (const [, players] of sortedPointGroups) {
+      const availableInGroup = players.filter(p => !usedPlayers.has(p.id));
+      const shuffledGroup = shuffle(availableInGroup);
+      
+      for (let i = 0; i < shuffledGroup.length - 1; i += 2) {
+        const player1 = shuffledGroup[i];
+        const player2 = shuffledGroup[i + 1];
+        
+        if (!havePlayedBefore(player1.id, player2.id, tournament.matches)) {
+          proposedPairs.push({
+            player1Id: player1.id,
+            player2Id: player2.id,
+            round: nextRound
+          });
+          usedPlayers.add(player1.id);
+          usedPlayers.add(player2.id);
+        }
       }
     }
   }
   
-  // Cross-group pairing for remaining players
-  const remainingPlayers = availablePlayers.filter(p => !usedPlayers.has(p.id));
+  // Cross-group pairing for remaining players (randomized)
+  const remainingPlayers = shuffle(availablePlayers.filter(p => !usedPlayers.has(p.id)));
   
   for (let i = 0; i < remainingPlayers.length - 1; i++) {
-    for (let j = i + 1; j < remainingPlayers.length; j++) {
-      const player1 = remainingPlayers[i];
-      const player2 = remainingPlayers[j];
-      
-      if (usedPlayers.has(player1.id) || usedPlayers.has(player2.id)) continue;
-      
+    if (usedPlayers.has(remainingPlayers[i].id)) continue;
+    
+    const player1 = remainingPlayers[i];
+    
+    // Find random eligible opponents within tolerance
+    const eligibleOpponents = remainingPlayers.slice(i + 1).filter(player2 => {
+      if (usedPlayers.has(player2.id)) return false;
       const pointDifference = Math.abs(player1.points - player2.points);
+      return pointDifference <= tournament.swissTolerance && 
+             !havePlayedBefore(player1.id, player2.id, tournament.matches);
+    });
+    
+    if (eligibleOpponents.length > 0) {
+      // Randomly select from eligible opponents
+      const player2 = eligibleOpponents[Math.floor(Math.random() * eligibleOpponents.length)];
       
-      if (pointDifference <= tournament.swissTolerance && 
-          !havePlayedBefore(player1.id, player2.id, tournament.matches)) {
-        proposedPairs.push({
-          player1Id: player1.id,
-          player2Id: player2.id,
-          round: nextRound
-        });
-        usedPlayers.add(player1.id);
-        usedPlayers.add(player2.id);
-        break;
-      }
+      proposedPairs.push({
+        player1Id: player1.id,
+        player2Id: player2.id,
+        round: nextRound
+      });
+      usedPlayers.add(player1.id);
+      usedPlayers.add(player2.id);
     }
   }
   
