@@ -58,30 +58,34 @@ const MainContent: React.FC<MainContentProps> = ({ tournament, setTournament }) 
             Dashboard
           </button>
         )}
-        <button
-          className={`tab ${activeTab === 'matches' ? 'active' : ''}`}
-          onClick={() => setActiveTab('matches')}
-        >
-          Match Entry
-        </button>
-        <button
-          className={`tab ${activeTab === 'table' ? 'active' : ''}`}
-          onClick={() => setActiveTab('table')}
-        >
-          Tournament Table
-        </button>
-        <button
-          className={`tab ${activeTab === 'standings' ? 'active' : ''}`}
-          onClick={() => setActiveTab('standings')}
-        >
-          Standings
-        </button>
-        <button
-          className={`tab ${activeTab === 'stats' ? 'active' : ''}`}
-          onClick={() => setActiveTab('stats')}
-        >
-          Statistics
-        </button>
+        {tournament.tournamentType !== 'round-robin' && (
+          <>
+            <button
+              className={`tab ${activeTab === 'matches' ? 'active' : ''}`}
+              onClick={() => setActiveTab('matches')}
+            >
+              Match Entry
+            </button>
+            <button
+              className={`tab ${activeTab === 'table' ? 'active' : ''}`}
+              onClick={() => setActiveTab('table')}
+            >
+              Tournament Table
+            </button>
+            <button
+              className={`tab ${activeTab === 'standings' ? 'active' : ''}`}
+              onClick={() => setActiveTab('standings')}
+            >
+              Standings
+            </button>
+            <button
+              className={`tab ${activeTab === 'stats' ? 'active' : ''}`}
+              onClick={() => setActiveTab('stats')}
+            >
+              Statistics
+            </button>
+          </>
+        )}
       </div>
 
       {tournament.tournamentType === 'rapid-swiss' && (
@@ -96,28 +100,32 @@ const MainContent: React.FC<MainContentProps> = ({ tournament, setTournament }) 
         </div>
       )}
 
-      <div className={`tab-content ${activeTab === 'matches' ? 'active' : ''}`}>
-        {hasMatches ? (
-          <MatchEntry tournament={tournament} setTournament={setTournament} />
-        ) : (
-          <div style={{ textAlign: 'center', padding: '40px' }}>
-            <h2>No Matches Available</h2>
-            <p>Tournament matches haven't been generated yet. Please make sure you've set up players and started the tournament properly.</p>
+      {tournament.tournamentType !== 'round-robin' && (
+        <>
+          <div className={`tab-content ${activeTab === 'matches' ? 'active' : ''}`}>
+            {hasMatches ? (
+              <MatchEntry tournament={tournament} setTournament={setTournament} />
+            ) : (
+              <div style={{ textAlign: 'center', padding: '40px' }}>
+                <h2>No Matches Available</h2>
+                <p>Tournament matches haven't been generated yet. Please make sure you've set up players and started the tournament properly.</p>
+              </div>
+            )}
           </div>
-        )}
-      </div>
 
-      <div className={`tab-content ${activeTab === 'table' ? 'active' : ''}`}>
-        <TournamentTable tournament={tournament} />
-      </div>
+          <div className={`tab-content ${activeTab === 'table' ? 'active' : ''}`}>
+            <TournamentTable tournament={tournament} />
+          </div>
 
-      <div className={`tab-content ${activeTab === 'standings' ? 'active' : ''}`}>
-        <Standings tournament={tournament} />
-      </div>
+          <div className={`tab-content ${activeTab === 'standings' ? 'active' : ''}`}>
+            <Standings tournament={tournament} />
+          </div>
 
-      <div className={`tab-content ${activeTab === 'stats' ? 'active' : ''}`}>
-        <Statistics tournament={tournament} />
-      </div>
+          <div className={`tab-content ${activeTab === 'stats' ? 'active' : ''}`}>
+            <Statistics tournament={tournament} />
+          </div>
+        </>
+      )}
     </div>
   );
 };

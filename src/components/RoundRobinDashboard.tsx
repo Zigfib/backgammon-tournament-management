@@ -413,6 +413,7 @@ const RoundRobinDashboard: React.FC<RoundRobinDashboardProps> = ({ tournament, s
                 <th style={{ padding: '12px', textAlign: 'center', border: '1px solid #dee2e6' }}>TB2: Buchholz</th>
                 <th style={{ padding: '12px', textAlign: 'center', border: '1px solid #dee2e6' }}>TB3: Goal Diff</th>
                 <th style={{ padding: '12px', textAlign: 'center', border: '1px solid #dee2e6' }}>ELO</th>
+                <th style={{ padding: '12px', textAlign: 'center', border: '1px solid #dee2e6' }}>ELO Change</th>
               </tr>
             </thead>
             <tbody>
@@ -458,6 +459,19 @@ const RoundRobinDashboard: React.FC<RoundRobinDashboardProps> = ({ tournament, s
                     </td>
                     <td style={{ padding: '10px', border: '1px solid #dee2e6', textAlign: 'center' }}>
                       {player.currentElo || player.startingElo}
+                    </td>
+                    <td style={{ padding: '10px', border: '1px solid #dee2e6', textAlign: 'center' }}>
+                      {(() => {
+                        const change = (player.currentElo || player.startingElo) - player.startingElo;
+                        return (
+                          <span style={{ 
+                            color: change > 0 ? '#28a745' : change < 0 ? '#dc3545' : '#6c757d',
+                            fontWeight: 'bold'
+                          }}>
+                            {change > 0 ? '+' : ''}{change}
+                          </span>
+                        );
+                      })()} 
                     </td>
                   </tr>
                 );
