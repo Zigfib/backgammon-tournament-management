@@ -8,9 +8,12 @@ A comprehensive web application for managing round-robin backgammon tournaments 
 - **Tournament Management**: Create and manage tournaments with custom names
 - **Player Management**: Add 3-32 players with customizable starting ELO ratings
 - **Match Tracking**: Record match results with automatic ELO calculations
+- **Integrated Dashboard**: Streamlined round-robin interface with all features in one view
+- **Player Match Filter**: Players can filter to see only their own matches
 - **Dual Ranking Systems**: 
   - Standard: Points-based ranking with tiebreakers
   - Hybrid: Alternating points and ELO improvement rankings
+- **ELO Change Tracking**: Real-time display of ELO gains and losses
 - **Data Persistence**: Save/load tournaments locally and export/import JSON files
 - **Real-time Statistics**: Live tournament standings and player statistics
 
@@ -39,34 +42,39 @@ A comprehensive web application for managing round-robin backgammon tournaments 
 
 ### 2. During the Tournament
 
+#### Round-Robin Dashboard (Recommended)
+Round-robin tournaments feature a streamlined **Dashboard** interface that combines all essential features:
+
+- **Tournament Progress**: View completion percentage, active matches, and overall stats
+- **Integrated Match Table**: All matches with inline score entry
+- **Player Filter**: Use the "Find Matches" dropdown to show only specific player's matches
+- **Live Standings**: Real-time rankings with ELO change tracking
+- **One-Screen Management**: Everything needed without switching tabs
+
 #### Score Entry Features
 - **Submit Score System**: Scores are entered and then deliberately submitted with a button
 - **Smart Validation**: Only valid backgammon scores are accepted (one player reaches maximum points)
 - **Auto-Completion**: When entering a score below maximum, clicking the opponent's field auto-fills the maximum score
 - **Edit Capability**: Previously submitted scores can be edited if needed
+- **Inline Entry**: Click "Enter Score" on any match to input results directly
 
-#### Recording Match Results
-- Navigate to the **Enter Match Results** tab
-- Find the match you want to record
-- Enter scores for both players:
-  - One score must be the tournament maximum (e.g., 5 points)
-  - The other score must be lower
-  - **Auto-completion**: When you enter a lower score and click the other field, the maximum score is automatically filled
-- Click **Submit Score** to record the match
-  - Scores only appear in the tournament table after submission
-  - The button changes to **Edit Score** after submission
-  - Scores are validated and ELO ratings updated automatically
+#### Recording Match Results (Dashboard Method - Recommended)
+1. **Find Your Match**: Use the player filter dropdown to show only your matches
+2. **Enter Scores**: Click "Enter Score" button next to any match
+3. **Input Results**: Enter scores for both players:
+   - One score must be the tournament maximum (e.g., 11 points)
+   - The other score must be lower
+   - **Auto-completion**: When you enter a lower score and click the other field, the maximum score is automatically filled
+4. **Submit**: Click "Submit" to record the match
+   - Scores are validated and ELO ratings updated automatically
+   - Rankings update immediately in the standings below
 
-#### Viewing Standings
-- Check the **Standings** tab for current rankings
-- Rankings update automatically as matches are completed
-- See detailed tiebreaker information
-
-#### Tournament Statistics
-- View the **Statistics** tab for:
-  - Match completion progress
-  - Player performance metrics
-  - ELO rating changes
+#### Alternative: Traditional Tab Interface
+For other tournament types, use the separate tabs:
+- **Enter Match Results**: Dedicated score entry interface
+- **Standings**: Current rankings with tiebreaker details
+- **Tournament Table**: Complete player statistics grid
+- **Statistics**: Match completion and performance metrics
 
 ### 3. Saving and Loading
 
@@ -117,9 +125,10 @@ Alternating system:
    - Decide on the score entry mode based on trust level and supervision
 
 2. **During Tournament**:
+   - Use the integrated Dashboard for efficient round-robin management
    - Regularly export tournament data as backup
-   - Monitor the Statistics tab to track progress
-   - Use the Standings tab to announce current positions
+   - Encourage players to use the player filter to find their matches quickly
+   - Monitor completion progress in the dashboard header
 
 3. **After Tournament**:
    - Export final results as JSON for records
@@ -152,12 +161,29 @@ Alternating system:
 - Check that you have permission based on the score entry mode
 
 **Rankings look wrong?**
-- Verify you understand the selected ranking system
+- Verify you understand the selected ranking system (check the explanation in the dashboard)
 - Check that all matches have been properly recorded
+- Note that ELO changes are displayed with color coding (green = gain, red = loss)
 
 **Data lost?**
 - Browser storage can be cleared by browser settings
 - Always export important tournaments as JSON files
+
+## Dashboard Interface Features
+
+### Round-Robin Dashboard
+The integrated dashboard provides:
+- **Tournament Progress Bar**: Visual completion tracking
+- **Player Match Filter**: Dropdown to show specific player's matches
+- **Inline Score Entry**: Direct score input without tab switching
+- **Real-time Standings**: Live rankings with ELO change indicators
+- **Color-Coded ELO Changes**: Green for gains, red for losses, gray for no change
+
+### Player Experience
+- Players can easily find their matches using the filter dropdown
+- Scores can be entered and edited directly in the match table
+- Immediate feedback on ELO changes after each match
+- Clean, distraction-free interface with all needed information
 
 ## Support
 
@@ -165,6 +191,7 @@ This tournament manager handles all standard round-robin tournament scenarios an
 - Match generation (all players play each other the specified number of rounds)
 - ELO rating calculations with margin of victory considerations
 - Comprehensive tiebreaker systems
+- Integrated dashboard interface for streamlined tournament management
 - Data persistence and sharing capabilities
 
-For best results, export your tournament data regularly and keep JSON backups of important tournaments.
+For best results, use the Dashboard interface for round-robin tournaments, export your tournament data regularly, and keep JSON backups of important tournaments.
