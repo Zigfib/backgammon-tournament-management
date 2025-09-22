@@ -5,6 +5,7 @@ import TournamentTable from './TournamentTable';
 import Standings from './Standings';
 import Statistics from './Statistics';
 import SwissDashboard from './SwissDashboard';
+import RoundRobinDashboard from './RoundRobinDashboard';
 import { calculateStats } from '../utils/tournament';
 
 interface MainContentProps {
@@ -14,12 +15,14 @@ interface MainContentProps {
 
 const MainContent: React.FC<MainContentProps> = ({ tournament, setTournament }) => {
   // Default to Swiss dashboard for Swiss tournaments, otherwise matches
-  const [activeTab, setActiveTab] = useState<'swiss' | 'matches' | 'table' | 'standings' | 'stats'>('matches');
+  const [activeTab, setActiveTab] = useState<'swiss' | 'dashboard' | 'matches' | 'table' | 'standings' | 'stats'>('matches');
   
   // Update active tab when tournament type changes
   useEffect(() => {
     if (tournament.tournamentType === 'rapid-swiss') {
       setActiveTab('swiss');
+    } else if (tournament.tournamentType === 'round-robin') {
+      setActiveTab('dashboard');
     } else {
       setActiveTab('matches');
     }
@@ -45,6 +48,14 @@ const MainContent: React.FC<MainContentProps> = ({ tournament, setTournament }) 
             onClick={() => setActiveTab('swiss')}
           >
             Swiss Dashboard
+          </button>
+        )}
+        {tournament.tournamentType === 'round-robin' && (
+          <button
+            className={`tab ${activeTab === 'dashboard' ? 'active' : ''}`}
+            onClick={() => setActiveTab('dashboard')}
+          >
+            Dashboard
           </button>
         )}
         <button
@@ -76,6 +87,12 @@ const MainContent: React.FC<MainContentProps> = ({ tournament, setTournament }) 
       {tournament.tournamentType === 'rapid-swiss' && (
         <div className={`tab-content ${activeTab === 'swiss' ? 'active' : ''}`}>
           <SwissDashboard tournament={tournament} setTournament={setTournament} />
+        </div>
+      )}
+
+      {tournament.tournamentType === 'round-robin' && (
+        <div className={`tab-content ${activeTab === 'dashboard' ? 'active' : ''}`}>
+          <RoundRobinDashboard tournament={tournament} setTournament={setTournament} />
         </div>
       )}
 
