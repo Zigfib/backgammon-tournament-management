@@ -12,6 +12,8 @@ const RoundRobinDashboard: React.FC<RoundRobinDashboardProps> = ({ tournament, s
   // State for score input
   const [editingMatch, setEditingMatch] = useState<number | null>(null);
   const [pendingScores, setPendingScores] = useState<{[key: number]: {player1Score: string, player2Score: string}}>({});
+  // State for player filter
+  const [selectedPlayerId, setSelectedPlayerId] = useState<number | null>(null);
   
   // Get data for the dashboard
   const completedMatches = tournament.matches.filter(m => m.completed);
@@ -66,6 +68,11 @@ const RoundRobinDashboard: React.FC<RoundRobinDashboardProps> = ({ tournament, s
   const sortedPlayers = tournament.rankingSystem === 'hybrid' 
     ? calculateHybridRanking(tournament.players, resultsFromMatches)
     : calculateStandardRanking(tournament.players, resultsFromMatches);
+
+  // Filter matches based on selected player
+  const filteredMatches = selectedPlayerId !== null 
+    ? tournament.matches.filter(match => match.player1 === selectedPlayerId || match.player2 === selectedPlayerId)
+    : tournament.matches;
 
   // Score input handlers
   const handleMatchClick = (matchId: number) => {
@@ -174,7 +181,35 @@ const RoundRobinDashboard: React.FC<RoundRobinDashboardProps> = ({ tournament, s
 
       {/* 2. Tournament Matches Section */}
       <div style={{ marginBottom: '25px' }}>
-        <h3 style={{ margin: '0 0 15px 0', color: '#495057' }}>All Tournament Matches</h3>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+          <h3 style={{ margin: '0', color: '#495057' }}>
+            {selectedPlayerId !== null ? `${tournament.players[selectedPlayerId].name}'s Matches` : 'All Tournament Matches'}
+          </h3>
+          
+          {/* Player Filter Dropdown */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <label style={{ fontSize: '14px', color: '#495057' }}>Find Matches:</label>
+            <select
+              value={selectedPlayerId !== null ? selectedPlayerId : ''}
+              onChange={(e) => setSelectedPlayerId(e.target.value !== '' ? parseInt(e.target.value) : null)}
+              style={{
+                padding: '6px 12px',
+                border: '1px solid #dee2e6',
+                borderRadius: '4px',
+                fontSize: '14px',
+                backgroundColor: 'white',
+                cursor: 'pointer'
+              }}
+            >
+              <option value="">All Players</option>
+              {tournament.players.map(player => (
+                <option key={player.id} value={player.id}>
+                  {player.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
         <div style={{ backgroundColor: 'white', border: '1px solid #dee2e6', borderRadius: '8px', overflow: 'hidden' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
@@ -187,7 +222,7 @@ const RoundRobinDashboard: React.FC<RoundRobinDashboardProps> = ({ tournament, s
               </tr>
             </thead>
             <tbody>
-              {tournament.matches.map(match => {
+              {filteredMatches.map(match => {
                 const player1 = tournament.players[match.player1];
                 const player2 = tournament.players[match.player2];
                 const isEditing = editingMatch === match.id;
