@@ -492,8 +492,17 @@ const findSafePairsWithFutureConstraints = (
         // Get players who will be available for pairing after active matches complete
         const futureAvailablePlayers = getAvailablePlayers(simulatedTournament);
 
-        // Check if we can form a perfect matching with remaining players
-        if (!canFormPerfectMatching(futureAvailablePlayers, simulatedTournament)) {
+        // CRITICAL FIX: Remove players who are already committed to pairings in current round
+        // If we're considering pairing player1 and player2 now, they won't be available later
+        const uncommittedPlayers = futureAvailablePlayers.filter(p => 
+          p.id !== player1.id && p.id !== player2.id && !usedPlayers.has(p.id)
+        );
+
+        console.log(`Scenario check: ${futureAvailablePlayers.length} future available, ${uncommittedPlayers.length} uncommitted`);
+
+        // Check if we can form a perfect matching with UNCOMMITTED players
+        if (!canFormPerfectMatching(uncommittedPlayers, simulatedTournament)) {
+          console.log(`Cannot form perfect matching with uncommitted players - pairing ${player1.id}-${player2.id} is NOT safe`);
           isSafeInAllScenarios = false;
           break;
         }
