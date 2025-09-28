@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Tournament, Player } from '../types';
-import { getRoundsPlayed, getPlayerRecord, getNextRound, getAvailablePlayers, getProposedSwissPairings, updateMatchResult, havePlayedBefore } from '../utils/tournament';
+import { getRoundsPlayed, getOverallPlayerRecord, getNextRound, getAvailablePlayers, getProposedSwissPairings, updateMatchResult, havePlayedBefore } from '../utils/tournament';
 import { calculateStandardRanking } from '../utils/ranking';
 
 interface SwissDashboardProps {
@@ -261,7 +261,7 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({ tournament, setTourname
                 >
                   <option value="">Select Player 1...</option>
                   {availablePlayers.map(player => {
-                    const record = getPlayerRecord(player.id, tournament.matches);
+                    const record = getOverallPlayerRecord(player.id, tournament.matches);
                     const roundsPlayed = getRoundsPlayed(player, tournament.matches);
                     return (
                       <option key={player.id} value={player.id + 1}>
@@ -295,7 +295,7 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({ tournament, setTourname
                   {manualPlayer1 !== null && availablePlayers
                     .filter(player => player.id !== manualPlayer1)
                     .map(player => {
-                      const record = getPlayerRecord(player.id, tournament.matches);
+                      const record = getOverallPlayerRecord(player.id, tournament.matches);
                       const roundsPlayed = getRoundsPlayed(player, tournament.matches);
                       return (
                         <option key={player.id} value={player.id + 1}>
@@ -659,7 +659,7 @@ const SwissDashboard: React.FC<SwissDashboardProps> = ({ tournament, setTourname
                 return calculateStandardRanking(tournament.players, resultsFromMatches);
               })()
                 .map(player => {
-                  const record = getPlayerRecord(player.id, tournament.matches);
+                  const record = getOverallPlayerRecord(player.id, tournament.matches);
                   const roundsPlayed = getRoundsPlayed(player, tournament.matches);
                   const status = getPlayerStatus(player);
                   
