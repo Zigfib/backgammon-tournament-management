@@ -373,11 +373,21 @@ export const getProposedSwissPairings = (tournament: Tournament): { player1Id: n
 
   console.log(`Players waiting in active matches: ${playersWaitingForPairing.length}`);
 
-  // FIXED: Wait for all matches in current round to complete before suggesting new pairings
-  // This prevents the illegal pairing scenario you described
+  // Rapid pairing: Only suggest pairings if they're safe regardless of active match outcomes
   if (playersWaitingForPairing.length > 0) {
-    console.log(`Waiting for ${playersWaitingForPairing.length} players to finish their matches before suggesting new pairings`);
-    return []; // No pairings while matches are active
+    // Simple rule: Only pair available players if total remaining players will be even
+    const totalPlayers = candidateGroup.length + playersWaitingForPairing.length;
+    
+    console.log(`Rapid pairing check: ${candidateGroup.length} available, ${playersWaitingForPairing.length} waiting, ${totalPlayers} total`);
+    
+    // Must have even total players and even available players to safely pair some now
+    if (totalPlayers % 2 === 0 && candidateGroup.length % 2 === 0 && candidateGroup.length >= 2) {
+      console.log('Safe to offer rapid pairings - even numbers allow perfect matching');
+      return findGreedyPairings(candidateGroup, tournament, nextRound);
+    } else {
+      console.log('Cannot guarantee perfect matching - waiting for more matches to complete');
+      return [];
+    }
   }
 
   // If no players waiting or too many to analyze, use simple greedy pairing
