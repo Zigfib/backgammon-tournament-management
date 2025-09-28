@@ -417,6 +417,15 @@ export const getProposedSwissPairings = (tournament: Tournament): { player1Id: n
 
   // If we have players waiting and the number is small enough to analyze, use safe pairing
   if (playersWaitingForPairing.length > 0 && activeMatches.length <= 8) {
+    // CRITICAL CHECK: For each active match, verify the two players can legally be paired together
+    // when their match completes (i.e., they haven't already played each other before)
+    for (const activeMatch of activeMatches) {
+      if (havePlayedBefore(activeMatch.player1, activeMatch.player2, tournament.matches.filter(m => m.id !== activeMatch.id))) {
+        console.log(`Active match players ${activeMatch.player1} and ${activeMatch.player2} have already played - cannot offer safe pairings yet`);
+        return []; // Cannot safely pair anyone yet
+      }
+    }
+    
     // Generate all possible outcome scenarios for active matches
     const scenarios = enumerateOutcomeScenarios(tournament, activeMatches, playersWaitingForPairing);
 
