@@ -426,6 +426,7 @@ const findGreedyPairings = (
   // Sort players by points (descending) for better Swiss pairing
   const sortedPlayers = [...players].sort((a, b) => b.points - a.points);
 
+  // First pass: strict tolerance
   for (let i = 0; i < sortedPlayers.length; i++) {
     if (usedPlayers.has(sortedPlayers[i].id)) continue;
 
@@ -453,5 +454,33 @@ const findGreedyPairings = (
     }
   }
 
+  // Second pass: relax tolerance to pair remaining players
+  for (let i = 0; i < sortedPlayers.length; i++) {
+    if (usedPlayers.has(sortedPlayers[i].id)) continue;
+
+    const player1 = sortedPlayers[i];
+
+    // Find any opponent who hasn't played this player before
+    for (let j = i + 1; j < sortedPlayers.length; j++) {
+      if (usedPlayers.has(sortedPlayers[j].id)) continue;
+
+      const player2 = sortedPlayers[j];
+      const notPlayedBefore = !havePlayedBefore(player1.id, player2.id, tournament.matches);
+
+      if (notPlayedBefore) {
+        console.log(`Relaxed pairing: ${player1.id} (${player1.points}pts) vs ${player2.id} (${player2.points}pts)`);
+        pairs.push({
+          player1Id: player1.id,
+          player2Id: player2.id,
+          round: targetRound
+        });
+        usedPlayers.add(player1.id);
+        usedPlayers.add(player2.id);
+        break;
+      }
+    }
+  }
+
+  console.log(`Created ${pairs.length} pairings from ${players.length} players`);
   return pairs;
 };
