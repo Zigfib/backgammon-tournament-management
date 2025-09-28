@@ -1,11 +1,5 @@
 import { Tournament, Player, Match } from '../types';
 
-// Interface for pairing scenarios used in safe pairing analysis
-interface PairingScenario {
-  outcomes: { matchId: number, player1Score: number, player2Score: number }[];
-  players: Player[];
-}
-
 // Calculate ELO change for a player
 export const calculateEloChange = (playerElo: number, opponentElo: number, playerScore: number, opponentScore: number, kFactor: number = 32): number => {
   const expectedScore = 1 / (1 + Math.pow(10, (opponentElo - playerElo) / 400));
@@ -55,7 +49,7 @@ export const updateMatchResult = (tournament: Tournament, matchId: number, playe
         const opponentScore = match.player2Score!;
         const opponentElo = tournament.players[match.player2].currentElo || tournament.players[match.player2].startingElo;
         
-        points += playerScore > opponentScore ? 3 : 1;
+        points += playerScore > opponentScore ? 1 : 0;
         goalDiff += playerScore - opponentScore;
         
         const eloChange = calculateEloChange(newElo, opponentElo, playerScore, opponentScore);
@@ -66,7 +60,7 @@ export const updateMatchResult = (tournament: Tournament, matchId: number, playe
         const opponentScore = match.player1Score!;
         const opponentElo = tournament.players[match.player1].currentElo || tournament.players[match.player1].startingElo;
         
-        points += playerScore > opponentScore ? 3 : 1;
+        points += playerScore > opponentScore ? 1 : 0;
         goalDiff += playerScore - opponentScore;
         
         const eloChange = calculateEloChange(newElo, opponentElo, playerScore, opponentScore);
@@ -151,7 +145,7 @@ export const calculateStats = (players: Player[], matches: Match[]): Player[] =>
         const opponent = players.find(p => p.id === match.player2)!;
         const opponentElo = opponent.currentElo || opponent.startingElo;
         
-        points += playerScore > opponentScore ? 3 : 1;
+        points += playerScore > opponentScore ? 1 : 0;
         goalDiff += playerScore - opponentScore;
         
         const eloChange = calculateEloChange(newElo, opponentElo, playerScore, opponentScore);
@@ -162,7 +156,7 @@ export const calculateStats = (players: Player[], matches: Match[]): Player[] =>
         const opponent = players.find(p => p.id === match.player1)!;
         const opponentElo = opponent.currentElo || opponent.startingElo;
         
-        points += playerScore > opponentScore ? 3 : 1;
+        points += playerScore > opponentScore ? 1 : 0;
         goalDiff += playerScore - opponentScore;
         
         const eloChange = calculateEloChange(newElo, opponentElo, playerScore, opponentScore);
@@ -251,8 +245,6 @@ const shuffle = <T>(array: T[]): T[] => {
   }
   return shuffled;
 };
-
-// Removed unused complex scenario generation
 
 // Build eligibility graph for perfect matching
 const buildEligibilityGraph = (players: Player[], tournament: Tournament, targetRound: number): Map<number, Set<number>> => {
@@ -393,8 +385,6 @@ export const getProposedSwissPairings = (tournament: Tournament): { player1Id: n
   // If no players waiting or too many to analyze, use simple greedy pairing
   return findGreedyPairings(candidateGroup, tournament, nextRound);
 };
-
-// Removed unused complex pairing algorithm
 
 // Check if a set of players can form a perfect matching
 const canFormPerfectMatching = (players: Player[], tournament: Tournament): boolean => {
