@@ -252,49 +252,7 @@ const shuffle = <T>(array: T[]): T[] => {
   return shuffled;
 };
 
-// Generate all possible outcome scenarios for active matches
-const enumerateOutcomeScenarios = (tournament: Tournament, activeMatches: Match[], availableAfterCompletion: Player[]): PairingScenario[] => {
-  if (activeMatches.length === 0) {
-    return [{ outcomes: [], players: [...tournament.players] }];
-  }
-  
-  if (activeMatches.length > 8) {
-    return [];
-  }
-  
-  const scenarios: PairingScenario[] = [];
-  
-  const generateScenarios = (matchIndex: number, currentOutcomes: any[], currentPlayers: Player[]) => {
-    if (matchIndex >= activeMatches.length) {
-      scenarios.push({
-        outcomes: [...currentOutcomes],
-        players: [...currentPlayers]
-      });
-      return;
-    }
-    
-    const match = activeMatches[matchIndex];
-    const player1 = currentPlayers[match.player1];
-    const player2 = currentPlayers[match.player2];
-    
-    // Scenario 1: Player 1 wins
-    const outcome1 = { matchId: match.id, player1Score: tournament.maxPoints, player2Score: tournament.maxPoints - 1 };
-    const newPlayers1 = [...currentPlayers];
-    newPlayers1[match.player1] = { ...player1, points: player1.points + 3, matches: player1.matches + 1 };
-    newPlayers1[match.player2] = { ...player2, points: player2.points + 1, matches: player2.matches + 1 };
-    generateScenarios(matchIndex + 1, [...currentOutcomes, outcome1], newPlayers1);
-    
-    // Scenario 2: Player 2 wins
-    const outcome2 = { matchId: match.id, player1Score: tournament.maxPoints - 1, player2Score: tournament.maxPoints };
-    const newPlayers2 = [...currentPlayers];
-    newPlayers2[match.player1] = { ...player1, points: player1.points + 1, matches: player1.matches + 1 };
-    newPlayers2[match.player2] = { ...player2, points: player2.points + 3, matches: player2.matches + 1 };
-    generateScenarios(matchIndex + 1, [...currentOutcomes, outcome2], newPlayers2);
-  };
-  
-  generateScenarios(0, [], tournament.players);
-  return scenarios;
-};
+// Removed unused complex scenario generation
 
 // Build eligibility graph for perfect matching
 const buildEligibilityGraph = (players: Player[], tournament: Tournament, targetRound: number): Map<number, Set<number>> => {
@@ -415,116 +373,18 @@ export const getProposedSwissPairings = (tournament: Tournament): { player1Id: n
 
   console.log(`Players waiting in active matches: ${playersWaitingForPairing.length}`);
 
-  // If we have players waiting and the number is small enough to analyze, use safe pairing
-  if (playersWaitingForPairing.length > 0 && activeMatches.length <= 8) {
-    // CRITICAL CHECK: For each active match, verify the two players can legally be paired together
-    // when their match completes (i.e., they haven't already played each other before)
-    for (const activeMatch of activeMatches) {
-      if (havePlayedBefore(activeMatch.player1, activeMatch.player2, tournament.matches.filter(m => m.id !== activeMatch.id))) {
-        console.log(`Active match players ${activeMatch.player1} and ${activeMatch.player2} have already played - cannot offer safe pairings yet`);
-        return []; // Cannot safely pair anyone yet
-      }
-    }
-    
-    // Generate all possible outcome scenarios for active matches
-    const scenarios = enumerateOutcomeScenarios(tournament, activeMatches, playersWaitingForPairing);
-
-    if (scenarios.length === 0) {
-      // Too many active matches - be conservative and propose no pairings
-      console.log('Too many active matches for safe pairing analysis - waiting');
-      return [];
-    }
-
-    console.log(`Analyzing ${scenarios.length} possible outcome scenarios`);
-
-    // Enhanced safe pair finding that considers future availability
-    const safePairs = findSafePairsWithFutureConstraints(candidateGroup, scenarios, tournament, nextRound, playersWaitingForPairing);
-
-    console.log(`Found ${safePairs.length} safe pairings considering future constraints`);
-
-    return safePairs;
+  // FIXED: Wait for all matches in current round to complete before suggesting new pairings
+  // This prevents the illegal pairing scenario you described
+  if (playersWaitingForPairing.length > 0) {
+    console.log(`Waiting for ${playersWaitingForPairing.length} players to finish their matches before suggesting new pairings`);
+    return []; // No pairings while matches are active
   }
 
   // If no players waiting or too many to analyze, use simple greedy pairing
   return findGreedyPairings(candidateGroup, tournament, nextRound);
 };
 
-// Enhanced safe pairing that considers future constraints
-const findSafePairsWithFutureConstraints = (
-  availableNow: Player[],
-  scenarios: PairingScenario[],
-  tournament: Tournament,
-  targetRound: number,
-  playersWaitingForPairing: Player[]
-): { player1Id: number, player2Id: number, round: number }[] => {
-  const safePairs: { player1Id: number, player2Id: number, round: number }[] = [];
-  const usedPlayers = new Set<number>();
-
-  // For each potential pairing among currently available players
-  for (let i = 0; i < availableNow.length; i++) {
-    if (usedPlayers.has(availableNow[i].id)) continue;
-
-    for (let j = i + 1; j < availableNow.length; j++) {
-      if (usedPlayers.has(availableNow[j].id)) continue;
-
-      const player1 = availableNow[i];
-      const player2 = availableNow[j];
-
-      // Check if this pair is valid now
-      const pointDifference = Math.abs(player1.points - player2.points);
-      const withinTolerance = pointDifference <= tournament.swissTolerance;
-      const notPlayedBefore = !havePlayedBefore(player1.id, player2.id, tournament.matches);
-
-      if (!withinTolerance || !notPlayedBefore) {
-        continue;
-      }
-
-      // Test if this pairing is safe across all possible future scenarios
-      let isSafeInAllScenarios = true;
-
-      for (const scenario of scenarios) {
-        // Simulate the tournament state after this pairing and the scenario outcomes
-        const simulatedTournament = {
-          ...tournament,
-          players: scenario.players
-        };
-
-        // Get players who will be available for pairing after active matches complete
-        const futureAvailablePlayers = getAvailablePlayers(simulatedTournament);
-
-        // CRITICAL FIX: Remove players who are already committed to pairings in current round
-        // If we're considering pairing player1 and player2 now, they won't be available later
-        const uncommittedPlayers = futureAvailablePlayers.filter(p => 
-          p.id !== player1.id && p.id !== player2.id && !usedPlayers.has(p.id)
-        );
-
-        console.log(`Scenario check: ${futureAvailablePlayers.length} future available, ${uncommittedPlayers.length} uncommitted`);
-
-        // Check if we can form a perfect matching with UNCOMMITTED players
-        if (!canFormPerfectMatching(uncommittedPlayers, simulatedTournament)) {
-          console.log(`Cannot form perfect matching with uncommitted players - pairing ${player1.id}-${player2.id} is NOT safe`);
-          isSafeInAllScenarios = false;
-          break;
-        }
-      }
-
-      if (isSafeInAllScenarios) {
-        safePairs.push({
-          player1Id: player1.id,
-          player2Id: player2.id,
-          round: targetRound
-        });
-        usedPlayers.add(player1.id);
-        usedPlayers.add(player2.id);
-
-        // Break out of inner loop to try next available player
-        break;
-      }
-    }
-  }
-
-  return safePairs;
-};
+// Removed unused complex pairing algorithm
 
 // Check if a set of players can form a perfect matching
 const canFormPerfectMatching = (players: Player[], tournament: Tournament): boolean => {
